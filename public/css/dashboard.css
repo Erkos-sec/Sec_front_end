@@ -1,0 +1,740 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #F7FAFC;
+    color: #2D3748;
+    line-height: 1.6;
+}
+
+/* Header */
+.header {
+    background: white;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-center {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    justify-content: center;
+}
+
+.menu-button,
+.logout-button {
+    background: none;
+    border: none;
+    color: #4A5568;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.menu-button:hover,
+.logout-button:hover {
+    background: #EDF2F7;
+    color: #2D3748;
+}
+
+.menu-text,
+.logout-text {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #718096;
+}
+
+.logo {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.brand-info {
+    text-align: center;
+}
+
+.brand-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2D3748;
+    line-height: 1;
+}
+
+.brand-subtitle {
+    font-size: 10px;
+    font-weight: 500;
+    color: #718096;
+    letter-spacing: 0.1em;
+}
+
+.page-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #2D3748;
+    margin-left: 32px;
+}
+
+.time-filter select {
+    padding: 8px 12px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    color: #4A5568;
+    cursor: pointer;
+}
+
+/* Main content */
+.main-content {
+    padding: 32px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+}
+
+/* Dashboard grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 32px;
+    margin-bottom: 32px;
+    max-width: 1200px;
+    width: 100%;
+    justify-self: center;
+}
+
+/* Specific card positioning to match reference layout */
+.parking-utilization-card {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.average-stay-time-card {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.foot-traffic-card {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.infringement-rate-card {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+/* Metric cards */
+.metric-card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.6s ease-out;
+    min-height: 200px;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.card-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2D3748;
+}
+
+.options-button {
+    background: none;
+    border: none;
+    color: #A0AEC0;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+}
+
+.options-button:hover {
+    color: #4A5568;
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    height: 200px;
+    margin-bottom: 16px;
+}
+
+.chart-container.small {
+    height: 120px;
+}
+
+/* Parking utilization card */
+.metric-card.large .card-content {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.metric-card.large .chart-container {
+    flex: 0 0 200px;
+    height: 200px;
+}
+
+.metric-info {
+    flex: 1;
+}
+
+.metric-number {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.metric-number span {
+    display: block;
+    font-size: 48px;
+    font-weight: 700;
+    color: #2D3748;
+    line-height: 1;
+}
+
+.metric-number small {
+    font-size: 14px;
+    color: #718096;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.legend {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.legend.small {
+    gap: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #4A5568;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.legend-color.available {
+    background: #E2E8F0;
+}
+
+.legend-color.occupied {
+    background: #38B2AC;
+}
+
+.legend-color.tracked {
+    background: #E2E8F0;
+}
+
+.legend-color.infractions {
+    background: #38B2AC;
+}
+
+/* Stay time metrics */
+.stay-time-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.stay-time-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #F7FAFC;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.stay-time-item:hover {
+    background: #EDF2F7;
+}
+
+.icon-container {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.icon-container.cars {
+    background: #38B2AC;
+}
+
+.icon-container.people {
+    background: #667EEA;
+}
+
+.metric-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.metric-label {
+    font-size: 14px;
+    color: #718096;
+    font-weight: 500;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2D3748;
+}
+
+.metric-unit {
+    font-size: 12px;
+    color: #A0AEC0;
+    font-weight: 500;
+}
+
+/* Foot traffic visual */
+.foot-traffic-visual {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.foot-traffic-icon {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.foot-traffic-stats {
+    text-align: center;
+}
+
+.main-metric {
+    margin-bottom: 12px;
+}
+
+.main-metric .metric-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: #38B2AC;
+    display: block;
+}
+
+.main-metric .metric-label {
+    font-size: 14px;
+    color: #718096;
+    font-weight: 500;
+}
+
+.trend-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.trend-indicator.positive {
+    color: #38A169;
+}
+
+.trend-indicator svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Parking visual */
+.parking-visual {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.parking-visual .chart-container {
+    flex: 0 0 120px;
+}
+
+.parking-stats {
+    flex: 1;
+}
+
+/* Infringement visual */
+.infringement-visual {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.infringement-visual .chart-container {
+    flex: 0 0 120px;
+}
+
+.infringement-stats {
+    flex: 1;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 24px;
+    color: #718096;
+    font-size: 14px;
+    border-top: 1px solid #E2E8F0;
+    background: white;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        gap: 24px;
+        max-width: 600px;
+    }
+    
+    /* Reset positioning for mobile - stack vertically */
+    .parking-utilization-card,
+    .average-stay-time-card,
+    .foot-traffic-card,
+    .infringement-rate-card {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    
+    .main-content {
+        padding: 16px;
+    }
+    
+    .header {
+        padding: 12px 16px;
+    }
+    
+    .page-title {
+        display: none;
+    }
+    
+    .header-center {
+        justify-content: flex-start;
+    }
+    
+    .stay-time-metrics {
+        gap: 16px;
+    }
+    
+    .stay-time-item {
+        padding: 12px;
+    }
+    
+    .parking-visual {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .infringement-visual {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .metric-card {
+        padding: 16px;
+    }
+    
+    .chart-container {
+        height: 150px;
+    }
+    
+    .metric-number span {
+        font-size: 36px;
+    }
+    
+    .main-metric .metric-value {
+        font-size: 28px;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #E2E8F0;
+    border-top: 2px solid #38B2AC;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Smooth transitions */
+.metric-card,
+.stay-time-item,
+.menu-button,
+.logout-button,
+.options-button {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus styles for accessibility */
+button:focus,
+select:focus {
+    outline: 2px solid #38B2AC;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .metric-card {
+        border: 2px solid #2D3748;
+    }
+    
+    .legend-color.available {
+        background: #718096;
+    }
+}
+
+/* Table Section */
+.table-section {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    background: #F7FAFC;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.table-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2D3748;
+}
+
+.table-controls {
+    display: flex;
+    gap: 12px;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #38B2AC;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+    background: #319795;
+    transform: translateY(-1px);
+}
+
+.table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+}
+
+.infractions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.infractions-table th {
+    background: #F7FAFC;
+    padding: 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #4A5568;
+    border-bottom: 1px solid #E2E8F0;
+    font-size: 14px;
+}
+
+.infractions-table td {
+    padding: 16px;
+    border-bottom: 1px solid #E2E8F0;
+    color: #2D3748;
+    font-size: 14px;
+}
+
+.infractions-table tr:hover {
+    background: #F7FAFC;
+}
+
+.approve-btn {
+    padding: 6px 12px;
+    background: #38A169;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.approve-btn:hover {
+    background: #2F855A;
+    transform: translateY(-1px);
+}
+
+.no-data {
+    text-align: center;
+    padding: 48px 24px;
+    color: #718096;
+}
+
+.no-data-icon {
+    margin-bottom: 16px;
+    color: #38B2AC;
+}
+
+.no-data h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #4A5568;
+}
+
+.no-data p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+    .table-section {
+        padding: 16px;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .infractions-table {
+        font-size: 12px;
+    }
+    
+    .infractions-table th,
+    .infractions-table td {
+        padding: 8px;
+    }
+}
