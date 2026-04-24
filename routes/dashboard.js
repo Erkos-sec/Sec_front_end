@@ -12,7 +12,7 @@ const requireAuth = (req, res, next) => {
 router.get('/', requireAuth, async (req, res) => {
     try {
         const email = req.session.clientEmail;
-        const pastHours = 100000;
+        const pastHours = 168; // Default to last 7 days
         
         const stats = await getDashboardStats(email, pastHours);
         

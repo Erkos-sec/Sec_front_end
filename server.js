@@ -33,8 +33,12 @@ app.get('/', (req, res) => {
     if (req.session.clientEmail) {
         res.redirect('/dashboard');
     } else {
-        res.redirect('/auth/login');
+        res.render('home');
     }
+});
+
+app.get('/home', (req, res) => {
+    res.render('home');
 });
 
 app.use((err, req, res, next) => {

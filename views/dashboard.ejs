@@ -35,7 +35,7 @@
             <div class="time-filter">
                 <select id="timeFilter" onchange="updateTimeFilter()">
                     <option value="24">Last 24 Hours</option>
-                    <option value="168">Last 7 Days</option>
+                    <option value="168" selected>Last 7 Days</option>
                     <option value="720">Last 30 Days</option>
                     <option value="8760">Last Year</option>
                 </select>
@@ -427,7 +427,7 @@
             });
         }
 
-        async function updateDashboard(hours = 24) {
+        async function updateDashboard(hours = 168) {
             try {
                 const response = await fetch(`/dashboard/api/stats?hours=${hours}`);
                 const data = await response.json();

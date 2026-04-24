@@ -99,6 +99,37 @@ body {
     }
 }
 
+.back-to-home {
+    margin-bottom: 20px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #6B7280;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.back-link:hover {
+    color: #4F46E5;
+    background: rgba(79, 70, 229, 0.05);
+    transform: translateX(-2px);
+}
+
+.back-link svg {
+    transition: transform 0.3s ease;
+}
+
+.back-link:hover svg {
+    transform: translateX(-2px);
+}
+
 .logo-section {
     text-align: center;
     margin-bottom: 40px;

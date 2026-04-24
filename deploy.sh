@@ -1,0 +1,309 @@
+#!/bin/bash
+
+# ERKOS Security Dashboard - AWS Lightsail Deployment Script
+# This script handles complete deployment including git pull, dependencies, and app startup
+
+set -e  # Exit on any error
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+APP_NAME="erkos-security-dashboard"
+APP_DIR="/opt/bitnami/projects/$APP_NAME"
+REPO_URL="https://github.com/your-username/your-repo.git"  # Update this with your actual repo
+NODE_VERSION="18"
+PORT=3000
+
+# Logging function
+log() {
+    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# Check if running as root or with sudo
+check_permissions() {
+    if [[ $EUID -ne 0 ]]; then
+        error "This script must be run as root or with sudo"
+        exit 1
+    fi
+}
+
+# Install Node.js and npm if not present
+install_nodejs() {
+    log "Checking Node.js installation..."
+    
+    if ! command -v node &> /dev/null; then
+        log "Installing Node.js $NODE_VERSION..."
+        curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | sudo -E bash -
+        apt-get install -y nodejs
+    else
+        log "Node.js is already installed: $(node --version)"
+    fi
+    
+    if ! command -v npm &> /dev/null; then
+        error "npm is not installed"
+        exit 1
+    fi
+    
+    log "npm version: $(npm --version)"
+}
+
+# Install PM2 for process management
+install_pm2() {
+    log "Checking PM2 installation..."
+    
+    if ! command -v pm2 &> /dev/null; then
+        log "Installing PM2..."
+        npm install -g pm2
+        pm2 startup
+    else
+        log "PM2 is already installed: $(pm2 --version)"
+    fi
+}
+
+# Install Git if not present
+install_git() {
+    log "Checking Git installation..."
+    
+    if ! command -v git &> /dev/null; then
+        log "Installing Git..."
+        apt-get update
+        apt-get install -y git
+    else
+        log "Git is already installed: $(git --version)"
+    fi
+}
+
+# Create application directory and set permissions
+setup_app_directory() {
+    log "Setting up application directory..."
+    
+    # Create directory if it doesn't exist
+    mkdir -p "$APP_DIR"
+    
+    # Set proper ownership (assuming bitnami user exists on Lightsail)
+    if id "bitnami" &>/dev/null; then
+        chown -R bitnami:bitnami "$APP_DIR"
+        log "Set ownership to bitnami user"
+    else
+        warning "bitnami user not found, keeping root ownership"
+    fi
+}
+
+# Clone or pull repository
+deploy_code() {
+    log "Deploying application code..."
+    
+    if [ -d "$APP_DIR/.git" ]; then
+        log "Repository exists, pulling latest changes..."
+        cd "$APP_DIR"
+        
+        # Stash any local changes
+        git stash
+        
+        # Pull latest changes
+        git pull origin main || git pull origin master
+        
+        # Apply stashed changes if any
+        git stash pop || true
+    else
+        log "Cloning repository..."
+        rm -rf "$APP_DIR"
+        git clone "$REPO_URL" "$APP_DIR"
+        cd "$APP_DIR"
+    fi
+    
+    # Show current commit
+    log "Current commit: $(git rev-parse --short HEAD)"
+    log "Last commit message: $(git log -1 --pretty=%B)"
+}
+
+# Install dependencies
+install_dependencies() {
+    log "Installing Node.js dependencies..."
+    cd "$APP_DIR"
+    
+    # Clear npm cache
+    npm cache clean --force
+    
+    # Install dependencies
+    npm ci --production
+    
+    success "Dependencies installed successfully"
+}
+
+# Setup environment variables
+setup_environment() {
+    log "Setting up environment variables..."
+    cd "$APP_DIR"
+    
+    # Create .env file if it doesn't exist
+    if [ ! -f ".env" ]; then
+        log "Creating .env file..."
+        cat > .env << EOF
+# ERKOS Security Dashboard Environment Configuration
+NODE_ENV=production
+PORT=$PORT
+
+# Database Configuration
+DB_HOST=your-db-host
+DB_USER=your-db-user
+DB_PASSWORD=your-db-password
+DB_NAME=your-db-name
+DB_PORT=3306
+
+# Session Configuration
+SESSION_SECRET=$(openssl rand -base64 32)
+
+# Application Configuration
+LOG_LEVEL=info
+EOF
+        warning "Please update the .env file with your actual database credentials"
+    else
+        log ".env file already exists"
+    fi
+    
+    # Set proper permissions
+    chmod 600 .env
+}
+
+# Configure firewall
+setup_firewall() {
+    log "Configuring firewall..."
+    
+    # Allow HTTP and HTTPS traffic
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw allow $PORT/tcp
+    
+    # Enable firewall if not already enabled
+    ufw --force enable
+    
+    success "Firewall configured"
+}
+
+# Start application with PM2
+start_application() {
+    log "Starting application with PM2..."
+    cd "$APP_DIR"
+    
+    # Stop existing process if running
+    pm2 stop $APP_NAME 2>/dev/null || true
+    pm2 delete $APP_NAME 2>/dev/null || true
+    
+    # Start application
+    pm2 start ecosystem.config.js --env production
+    
+    # Save PM2 configuration
+    pm2 save
+    
+    # Show status
+    pm2 status
+    
+    success "Application started successfully"
+}
+
+# Setup Nginx reverse proxy (optional)
+setup_nginx() {
+    log "Setting up Nginx reverse proxy..."
+    
+    if ! command -v nginx &> /dev/null; then
+        log "Installing Nginx..."
+        apt-get update
+        apt-get install -y nginx
+    fi
+    
+    # Create Nginx configuration
+    cat > /etc/nginx/sites-available/$APP_NAME << EOF
+server {
+    listen 80;
+    server_name _;
+    
+    location / {
+        proxy_pass http://localhost:$PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
+EOF
+    
+    # Enable site
+    ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+    
+    # Test and reload Nginx
+    nginx -t && systemctl reload nginx
+    
+    success "Nginx configured successfully"
+}
+
+# Health check
+health_check() {
+    log "Performing health check..."
+    
+    # Wait for application to start
+    sleep 5
+    
+    # Check if application is responding
+    if curl -f -s "http://localhost:$PORT" > /dev/null; then
+        success "Application is responding on port $PORT"
+    else
+        error "Application health check failed"
+        pm2 logs $APP_NAME --lines 20
+        exit 1
+    fi
+}
+
+# Main deployment function
+main() {
+    log "Starting ERKOS Security Dashboard deployment..."
+    
+    check_permissions
+    install_git
+    install_nodejs
+    install_pm2
+    setup_app_directory
+    deploy_code
+    install_dependencies
+    setup_environment
+    setup_firewall
+    start_application
+    setup_nginx
+    health_check
+    
+    success "Deployment completed successfully!"
+    log "Application is running on http://$(curl -s ifconfig.me):80"
+    log "You can also access it directly on port $PORT"
+    log ""
+    log "Useful commands:"
+    log "  pm2 status           - Check application status"
+    log "  pm2 logs $APP_NAME   - View application logs"
+    log "  pm2 restart $APP_NAME - Restart application"
+    log "  pm2 stop $APP_NAME   - Stop application"
+}
+
+# Run main function
+main "$@"
