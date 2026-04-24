@@ -237,15 +237,44 @@ EOF
 setup_firewall() {
     log "Configuring firewall..."
     
-    # Allow HTTP and HTTPS traffic
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    ufw allow $PORT/tcp
-    
-    # Enable firewall if not already enabled
-    ufw --force enable
-    
-    success "Firewall configured"
+    if command -v ufw &> /dev/null; then
+        log "Using UFW (Uncomplicated Firewall)..."
+        # Allow HTTP and HTTPS traffic
+        ufw allow 80/tcp
+        ufw allow 443/tcp
+        ufw allow $PORT/tcp
+        
+        # Enable firewall if not already enabled
+        ufw --force enable
+        success "UFW firewall configured"
+    elif command -v firewall-cmd &> /dev/null; then
+        log "Using firewalld..."
+        # Allow HTTP and HTTPS traffic
+        firewall-cmd --permanent --add-port=80/tcp
+        firewall-cmd --permanent --add-port=443/tcp
+        firewall-cmd --permanent --add-port=$PORT/tcp
+        firewall-cmd --reload
+        success "firewalld configured"
+    elif command -v iptables &> /dev/null; then
+        log "Using iptables..."
+        # Allow HTTP and HTTPS traffic
+        iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+        iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+        iptables -A INPUT -p tcp --dport $PORT -j ACCEPT
+        
+        # Save iptables rules if possible
+        if command -v iptables-save &> /dev/null; then
+            iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+        fi
+        success "iptables configured"
+    else
+        warning "No supported firewall found (ufw, firewalld, or iptables)"
+        warning "Please manually configure your firewall to allow:"
+        warning "  - Port 80 (HTTP)"
+        warning "  - Port 443 (HTTPS)" 
+        warning "  - Port $PORT (Application)"
+        log "On AWS Lightsail, you can configure firewall rules in the Lightsail console"
+    fi
 }
 
 # Start application with PM2
