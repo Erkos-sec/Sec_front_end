@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Configuration
 APP_NAME="erkos-security-dashboard"
 APP_DIR="/opt/bitnami/projects/$APP_NAME"
-REPO_URL="https://github.com/your-username/your-repo.git"  # Update this with your actual repo
+REPO_URL="https://github.com/Erkos-sec/Sec_front_end.git"  # Your actual repo URL
 NODE_VERSION="18"
 PORT=3000
 
@@ -106,32 +106,82 @@ setup_app_directory() {
     fi
 }
 
+# Configure git to never prompt for credentials
+configure_git() {
+    log "Configuring git to avoid credential prompts..."
+    
+    # Set git to never prompt for credentials
+    export GIT_TERMINAL_PROMPT=0
+    export GIT_ASKPASS=/bin/echo
+    
+    # Configure git globally to avoid prompts
+    git config --global credential.helper ""
+    git config --global --unset-all credential.helper || true
+    
+    # Set timeout to fail fast instead of hanging
+    git config --global http.timeout 10
+    git config --global https.timeout 10
+}
+
 # Clone or pull repository
 deploy_code() {
     log "Deploying application code..."
     
+    # Configure git first
+    configure_git
+    
     if [ -d "$APP_DIR/.git" ]; then
-        log "Repository exists, pulling latest changes..."
+        log "Repository exists, attempting to pull latest changes..."
         cd "$APP_DIR"
         
         # Stash any local changes
-        git stash
+        git stash --quiet || true
         
-        # Pull latest changes
-        git pull origin main || git pull origin master
-        
-        # Apply stashed changes if any
-        git stash pop || true
+        # Try to pull latest changes with no credential prompts
+        # Use timeout to prevent hanging
+        if timeout 30 git -c credential.helper="" pull origin main 2>/dev/null || timeout 30 git -c credential.helper="" pull origin master 2>/dev/null; then
+            log "Successfully pulled latest changes from repository"
+            # Apply stashed changes if any
+            git stash pop --quiet || true
+        else
+            warning "Could not pull from repository (authentication, network, or timeout)"
+            warning "Continuing with existing code in $APP_DIR"
+            # Still try to pop stash in case we stashed something
+            git stash pop --quiet || true
+        fi
     else
-        log "Cloning repository..."
-        rm -rf "$APP_DIR"
-        git clone "$REPO_URL" "$APP_DIR"
-        cd "$APP_DIR"
+        log "No existing repository found, attempting to clone..."
+        
+        # Try to clone with timeout and no credential prompts
+        if timeout 60 git -c credential.helper="" clone "$REPO_URL" "$APP_DIR" 2>/dev/null; then
+            log "Successfully cloned repository"
+            cd "$APP_DIR"
+        else
+            warning "Could not clone repository (authentication, network, or timeout)"
+            
+            # Check if there's already application code in the directory
+            if [ -f "$APP_DIR/server.js" ] && [ -f "$APP_DIR/package.json" ]; then
+                log "Found existing application code in $APP_DIR"
+                log "Continuing deployment with existing files..."
+                cd "$APP_DIR"
+            else
+                error "No application code found in $APP_DIR"
+                error "Please either:"
+                error "  1. Manually upload your code to $APP_DIR"
+                error "  2. Use a public repository URL"
+                error "  3. Configure SSH keys for git authentication"
+                exit 1
+            fi
+        fi
     fi
     
-    # Show current commit
-    log "Current commit: $(git rev-parse --short HEAD)"
-    log "Last commit message: $(git log -1 --pretty=%B)"
+    # Show current commit if we're in a git repository
+    if [ -d ".git" ]; then
+        log "Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+        log "Last commit message: $(git log -1 --pretty=%B 2>/dev/null || echo 'No commit history')"
+    else
+        log "Not a git repository, using local files"
+    fi
 }
 
 # Install dependencies

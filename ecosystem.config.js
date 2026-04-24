@@ -49,7 +49,7 @@ module.exports = {
       user: 'bitnami',
       host: 'your-lightsail-ip',
       ref: 'origin/main',
-      repo: 'https://github.com/your-username/your-repo.git',
+      repo: 'https://github.com/Erkos-sec/Sec_front_end.git',
       path: '/opt/bitnami/projects/erkos-security-dashboard',
       'pre-deploy-local': '',
       'post-deploy': 'npm install --production && pm2 reload ecosystem.config.js --env production',
