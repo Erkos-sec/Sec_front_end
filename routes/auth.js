@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 const router = express.Router();
 
-// Login page
 router.get('/login', (req, res) => {
     if (req.session.clientEmail) {
         return res.redirect('/dashboard');
@@ -11,7 +10,6 @@ router.get('/login', (req, res) => {
     res.render('login', { error: null });
 });
 
-// Login POST
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -20,7 +18,6 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        // Query the database for the user
         const [rows] = await db.execute(
             'SELECT * FROM clients WHERE client_email = ? LIMIT 1',
             [email]
@@ -33,15 +30,12 @@ router.post('/login', async (req, res) => {
         const user = rows[0];
         let isValidPassword = false;
 
-        // Check password - handle both hashed and plain text passwords
         const storedPassword = user.password || user.password_;
         
         if (storedPassword) {
-            // Check if it's a bcrypt hash
             if (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$')) {
                 isValidPassword = await bcrypt.compare(password, storedPassword);
             } else {
-                // Plain text comparison (for legacy passwords)
                 isValidPassword = password === storedPassword;
             }
         }
@@ -50,7 +44,6 @@ router.post('/login', async (req, res) => {
             return res.render('login', { error: 'Invalid email or password' });
         }
 
-        // Set session
         req.session.clientEmail = email;
         req.session.clientId = user.client_id;
         req.session.clientName = user.client_name || 'User';
@@ -63,7 +56,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Logout
 router.get('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {

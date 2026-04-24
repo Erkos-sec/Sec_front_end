@@ -1,211 +1,243 @@
-# ERKOS Security Dashboard
+# ERKOS Security Dashboard - Enhanced Edition
 
-A modern, responsive dashboard application for ERKOS Security parking management system. Built with Node.js, Express, and MySQL.
+A modern, feature-rich security dashboard with functional analytics and real-time data visualization for parking management and security monitoring.
 
-## Features
+## 🚀 Features
 
-- 🔐 **Secure Authentication** - Email/password login with session management
-- 📊 **Interactive Charts** - Real-time pie charts showing parking statistics
-- 📱 **Responsive Design** - Works perfectly on desktop, tablet, and mobile
-- ⚡ **Real-time Updates** - Auto-refreshing dashboard data every 30 seconds
-- 🎨 **Modern UI** - Clean, professional interface with smooth animations
-- 📈 **Key Metrics Tracking**:
-  - Parking utilization rates
-  - Average stay times for cars and people
-  - Foot traffic monitoring
-  - Infringement rate tracking
+### Enhanced Functionality
+- **Real-time Data Visualization**: Functional charts that display actual data from your database
+- **Dynamic Dashboard**: All metrics update based on selected time ranges
+- **Parking Utilization Tracking**: Live monitoring of parking spot availability
+- **Infringement Management**: View and approve parking violations with one click
+- **Foot Traffic Analytics**: Track visitor patterns with visual graphs
+- **Average Stay Time**: Monitor vehicle and visitor duration metrics
 
-## Technology Stack
+### Modern UI/UX
+- **Sleek Design**: Modern gradient backgrounds and smooth animations
+- **Responsive Layout**: Works perfectly on desktop, tablet, and mobile devices
+- **Interactive Charts**: Powered by Chart.js with hover tooltips and animations
+- **Live Updates**: Auto-refresh every 30 seconds to keep data current
+- **Intuitive Navigation**: Easy-to-use time range filters and controls
 
-- **Backend**: Node.js with Express.js
-- **Database**: MySQL (AWS RDS)
-- **Frontend**: EJS templating with vanilla JavaScript
-- **Charts**: Chart.js for interactive visualizations
-- **Styling**: Modern CSS with animations and responsive design
-- **Session Management**: Express-session with secure configuration
+### Security Features
+- **Secure Authentication**: Bcrypt password hashing support
+- **Session Management**: 24-hour secure sessions
+- **Protected Routes**: Middleware-based authentication checks
+- **Database Connection Pooling**: Optimized MySQL connections
 
-## Prerequisites
+## 📋 Prerequisites
 
 - Node.js (v14 or higher)
-- npm or yarn
-- Access to the MySQL database (configured in .env)
+- MySQL Database
+- npm or yarn package manager
 
-## Installation
+## 🔧 Installation
 
-1. **Clone or navigate to the project directory**:
+1. **Clone or navigate to the project directory**
    ```bash
-   cd "New App"
+   cd /Users/t0e03vc/Desktop/EK_Front/Sec_front
    ```
 
-2. **Install dependencies**:
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Environment Setup**:
-   The `.env` file is already configured with the database credentials from the old app. Make sure the database is accessible.
-
-4. **Start the application**:
-   ```bash
-   # Development mode (with auto-restart)
-   npm run dev
-   
-   # Production mode
-   npm start
+3. **Configure environment variables**
+   - Copy `.env.example` to `.env`
+   - Update the following variables:
+   ```env
+   PORT=3001
+   NODE_ENV=development
+   SESSION_SECRET=your-secret-key-here
+   DB_HOST=your-database-host
+   DB_USER=your-database-user
+   DB_PASSWORD=your-database-password
+   DB_NAME=your-database-name
    ```
 
-5. **Access the application**:
-   Open your browser and navigate to `http://localhost:3000`
+4. **Start the server**
+   ```bash
+   npm start
+   ```
+   
+   For development with auto-reload:
+   ```bash
+   npm run dev
+   ```
 
-## Database Schema
+5. **Access the dashboard**
+   - Open your browser and navigate to `http://localhost:3001`
+   - Login with your credentials from the database
 
-The application connects to the existing `clients_detections` database with the following key tables:
+## 📊 Database Schema
 
+The application expects the following tables:
+
+### Required Tables
 - `clients` - User authentication and client information
-- `locations` - Camera and location mapping
-- `car_detections` - Vehicle detection and parking data
-- `foot_traffic` - Pedestrian traffic data
-- `camera` - Camera configuration and spot tracking
+- `locations` - Location data linked to clients
+- `camera` - Camera information with spots_tracked field
+- `car_detections` - Vehicle detection records with infraction data
+- `ppl_detections` - People/foot traffic detection records
 
-## Usage
+### Key Fields
+- `clients.client_email` - Login email
+- `clients.password` or `clients.password_` - Password (supports bcrypt)
+- `camera.spots_tracked` - JSON field containing parking spot configuration
+- `car_detections.infraction_occurred` - Boolean for violations
+- `car_detections.approved` - Approval status for infractions
 
-### Login
-- Use existing client credentials from the old system
-- Email and password authentication
-- Session-based login with "Keep me signed in" option
+## 🎨 Features Breakdown
 
-### Dashboard Features
-- **Time Filter**: Switch between Today, This Week, This Month, and This Year views
-- **Auto-refresh**: Data updates automatically every 30 seconds
-- **Interactive Charts**: Hover over pie charts for detailed information
-- **Responsive Layout**: Optimized for all screen sizes
+### Dashboard Metrics
 
-### Key Metrics
-1. **Parking Utilization Rate**: Shows occupied vs available parking spots
-2. **Average Stay Time**: Displays average duration for cars and people
-3. **Foot Traffic**: Tracks pedestrian movement with trend indicators
-4. **Infringement Rate**: Monitors parking violations and compliance
+1. **Parking Utilization Card**
+   - Doughnut chart showing occupied vs available spots
+   - Real-time percentage calculation
+   - Total capacity display
+   - Color-coded statistics
 
-## API Endpoints
+2. **Average Stay Time Card**
+   - Vehicle average duration in hours
+   - Foot traffic count
+   - Progress bar visualization
+   - Trend indicators
 
-- `GET /` - Root redirect to dashboard or login
+3. **Foot Traffic Analytics Card**
+   - Line chart showing hourly patterns
+   - Total visitor count
+   - Peak vs normal flow indicators
+   - Smooth animations
+
+4. **Infringement Rate Card**
+   - Violation percentage doughnut chart
+   - Active violations count
+   - Compliant vs violation breakdown
+   - Alert badge for high rates
+
+### Infraction Table
+- Sortable columns
+- Real-time data updates
+- One-click approval system
+- Detailed violation information
+- Auto-refresh capability
+
+## 🔄 API Endpoints
+
+### Authentication
 - `GET /auth/login` - Login page
-- `POST /auth/login` - Authentication endpoint
-- `GET /auth/logout` - Logout and session destruction
+- `POST /auth/login` - Login submission
+- `GET /auth/logout` - Logout
+
+### Dashboard
 - `GET /dashboard` - Main dashboard page
-- `GET /dashboard/api/stats` - JSON API for dashboard statistics
+- `GET /dashboard/api/stats?hours=24` - Get dashboard statistics
+- `GET /dashboard/api/infractions?hours=24` - Get infraction data
+- `POST /dashboard/api/approve` - Approve an infraction
 
-## Security Features
+## 🎯 Time Range Filters
 
-- Password hashing support (bcrypt)
-- Session-based authentication
-- SQL injection prevention with prepared statements
-- XSS protection through EJS templating
-- Secure session configuration
-- Environment variable protection
+- **Last 24 Hours** - Today's activity
+- **Last 7 Days** - Weekly overview
+- **Last 30 Days** - Monthly trends
+- **Last Year** - Annual statistics
 
-## Performance Optimizations
+## 🛠️ Technology Stack
 
-- Database connection pooling
+- **Backend**: Node.js, Express.js
+- **Template Engine**: EJS
+- **Database**: MySQL with connection pooling
+- **Authentication**: bcryptjs, express-session
+- **Charts**: Chart.js 4.4.0
+- **Styling**: Custom CSS with modern gradients and animations
+
+## 📱 Responsive Design
+
+The dashboard is fully responsive with breakpoints at:
+- Desktop: 1200px+
+- Tablet: 768px - 1199px
+- Mobile: < 768px
+
+## 🔐 Security Best Practices
+
+- Environment variables for sensitive data
+- Session secret configuration
+- Password hashing support
+- SQL injection prevention via parameterized queries
+- HTTPS ready (set `cookie.secure: true` in production)
+
+## 🚦 Development vs Production
+
+### Development
+```bash
+npm run dev
+```
+- Nodemon auto-reload
+- Detailed error messages
+- Development environment variables
+
+### Production
+```bash
+npm start
+```
+- Set `NODE_ENV=production` in `.env`
+- Enable HTTPS
+- Set secure cookies
+- Use production database
+
+## 📈 Performance Optimizations
+
+- Database connection pooling (10 connections)
 - Efficient SQL queries with proper indexing
-- Client-side caching of static assets
-- Optimized chart rendering
-- Responsive image loading
+- Auto-refresh limited to 30-second intervals
+- Lazy loading for chart data
+- Optimized CSS animations
 
-## Browser Support
+## 🎨 Customization
 
-- Chrome 60+
-- Firefox 60+
-- Safari 12+
-- Edge 79+
+### Colors
+Main color scheme uses:
+- Primary: `#4F46E5` (Indigo)
+- Success: `#10B981` (Green)
+- Warning: `#EF4444` (Red)
+- Purple: `#8B5CF6` (Purple)
 
-## Development
+### Fonts
+- Primary: Inter (Google Fonts)
+- Fallback: System fonts
 
-### File Structure
-```
-New App/
-├── config/
-│   └── database.js          # Database connection and pooling
-├── public/
-│   └── css/
-│       ├── login.css        # Login page styles
-│       └── dashboard.css    # Dashboard styles
-├── routes/
-│   ├── auth.js             # Authentication routes
-│   └── dashboard.js        # Dashboard routes and API
-├── views/
-│   ├── login.ejs           # Login page template
-│   ├── dashboard.ejs       # Dashboard template
-│   └── error.ejs           # Error page template
-├── .env                    # Environment configuration
-├── package.json           # Dependencies and scripts
-├── server.js              # Main application server
-└── README.md              # This file
-```
+## 🐛 Troubleshooting
 
-### Adding New Features
-1. Create new routes in the `routes/` directory
-2. Add corresponding EJS templates in `views/`
-3. Update CSS files for styling
-4. Test with the existing database structure
+### Database Connection Issues
+- Verify database credentials in `.env`
+- Check if MySQL server is running
+- Ensure database exists and tables are created
 
-## Troubleshooting
+### Login Issues
+- Verify user exists in `clients` table
+- Check password field name (`password` or `password_`)
+- Ensure bcrypt hashes are valid
 
-### Common Issues
+### Chart Not Displaying
+- Check browser console for errors
+- Verify Chart.js CDN is accessible
+- Ensure data is being returned from API
 
-1. **Database Connection Failed**:
-   - Check `.env` file configuration
-   - Verify database server accessibility
-   - Ensure correct credentials
+## 📝 License
 
-2. **Login Issues**:
-   - Verify client exists in `clients` table
-   - Check password format (hashed vs plain text)
-   - Review session configuration
+MIT License - Feel free to use and modify for your projects
 
-3. **Charts Not Loading**:
-   - Check browser console for JavaScript errors
-   - Verify Chart.js CDN accessibility
-   - Ensure data is being returned from API
+## 👥 Support
 
-### Logs
-- Application logs are output to console
-- Database connection status is logged on startup
-- Authentication attempts are logged for security
-
-## Deployment
-
-### Production Checklist
-- [ ] Set `NODE_ENV=production` in environment
-- [ ] Configure HTTPS for secure sessions
-- [ ] Set up proper logging (Winston, etc.)
-- [ ] Configure reverse proxy (nginx)
-- [ ] Set up process manager (PM2)
-- [ ] Configure database backup strategy
-
-### Environment Variables for Production
-```env
-NODE_ENV=production
-SESSION_SECRET=your_secure_random_secret_here
-DB_HOST=your_production_db_host
-DB_USER=your_db_user
-DB_PASSWORD=your_secure_db_password
-DB_NAME=clients_detections
-PORT=3000
-```
-
-## Support
-
-For issues or questions regarding this dashboard application, please check:
-1. Database connectivity and credentials
-2. Node.js and npm versions
-3. Browser console for client-side errors
-4. Server logs for backend issues
-
-## License
-
-This project is proprietary software for ERKOS Security.
+For issues or questions, please check:
+1. Database connection and credentials
+2. Required tables exist with proper schema
+3. Node.js and npm versions are compatible
+4. All dependencies are installed
 
 ---
 
-© 2024 ERKOS SECURITY
+**Built with ❤️ for ERKOS Security**
+
+*Enhanced Edition - Version 2.0.0*

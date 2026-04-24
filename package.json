@@ -1,7 +1,7 @@
 {
-  "name": "erkos-dashboard",
-  "version": "1.0.0",
-  "description": "Modern ERKOS Security Dashboard",
+  "name": "erkos-security-dashboard",
+  "version": "2.0.0",
+  "description": "Enhanced ERKOS Security Dashboard with Functional Analytics",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -18,7 +18,7 @@
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
-  "keywords": ["dashboard", "security", "parking", "analytics"],
+  "keywords": ["dashboard", "security", "parking", "analytics", "erkos"],
   "author": "ERKOS Security",
   "license": "MIT"
 }

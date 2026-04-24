@@ -1,7 +1,6 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Create connection pool for better performance
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -14,7 +13,6 @@ const pool = mysql.createPool({
     timeout: 60000
 });
 
-// Test the connection
 async function testConnection() {
     try {
         const connection = await pool.getConnection();
@@ -27,7 +25,6 @@ async function testConnection() {
     }
 }
 
-// Initialize connection test
 testConnection();
 
 module.exports = pool;

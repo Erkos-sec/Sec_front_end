@@ -1,55 +1,36 @@
 #!/bin/bash
 
-# ERKOS Dashboard Quick Start Script
-echo "🚀 Starting ERKOS Security Dashboard..."
+echo "🚀 Starting ERKOS Security Dashboard - Enhanced Edition"
+echo "=================================================="
 
-# Check if Node.js is installed
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed. Please install Node.js first:"
-    echo "   - Visit: https://nodejs.org/"
-    echo "   - Or use Homebrew: brew install node"
-    exit 1
-fi
-
-# Check if npm is installed
-if ! command -v npm &> /dev/null; then
-    echo "❌ npm is not installed. Please install npm first."
-    exit 1
-fi
-
-echo "✅ Node.js version: $(node --version)"
-echo "✅ npm version: $(npm --version)"
-
-# Install dependencies if node_modules doesn't exist
+# Check if node_modules exists
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
     npm install
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to install dependencies"
-        exit 1
-    fi
-    echo "✅ Dependencies installed successfully"
-else
-    echo "✅ Dependencies already installed"
 fi
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
-    echo "❌ .env file not found. Please ensure the .env file exists with database configuration."
-    exit 1
+    echo "⚠️  Warning: .env file not found!"
+    echo "📝 Please copy .env.example to .env and configure your settings"
+    echo ""
+    read -p "Do you want to create .env from .env.example? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cp .env.example .env
+        echo "✅ Created .env file - please edit it with your database credentials"
+        echo "Press any key to continue after editing .env..."
+        read -n 1 -s
+    else
+        echo "❌ Cannot start without .env file. Exiting..."
+        exit 1
+    fi
 fi
 
-echo "✅ Environment configuration found"
-
-# Start the application
-echo "🌟 Starting ERKOS Dashboard on http://localhost:3000"
-echo "📊 Dashboard features:"
-echo "   - Modern login page"
-echo "   - Interactive pie charts"
-echo "   - Real-time statistics"
-echo "   - Responsive design"
 echo ""
-echo "Press Ctrl+C to stop the server"
-echo "----------------------------------------"
+echo "✅ Starting server..."
+echo "📊 Dashboard will be available at: http://localhost:3001"
+echo "=================================================="
+echo ""
 
 npm start

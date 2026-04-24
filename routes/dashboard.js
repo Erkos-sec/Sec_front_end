@@ -2,7 +2,6 @@ const express = require('express');
 const db = require('../config/database');
 const router = express.Router();
 
-// Middleware to check authentication
 const requireAuth = (req, res, next) => {
     if (!req.session.clientEmail) {
         return res.redirect('/auth/login');
@@ -10,16 +9,13 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
-// Dashboard main page
 router.get('/', requireAuth, async (req, res) => {
     try {
         const email = req.session.clientEmail;
-        const pastHours = 100000; // Large number to get historical data
+        const pastHours = 100000;
         
-        // Get dashboard statistics with fallback defaults
         const stats = await getDashboardStats(email, pastHours);
         
-        // Ensure all required properties exist with defaults
         const safeStats = {
             parkingUtilization: stats.parkingUtilization || { used: 0, available: 0, percentage: 0 },
             averageStayTime: stats.averageStayTime || { cars: 0, people: 0 },
@@ -36,7 +32,6 @@ router.get('/', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Dashboard error:', error);
         
-        // Render with default stats if there's an error
         const defaultStats = {
             parkingUtilization: { used: 0, available: 0, percentage: 0 },
             averageStayTime: { cars: 0, people: 0 },
@@ -53,7 +48,6 @@ router.get('/', requireAuth, async (req, res) => {
     }
 });
 
-// API endpoint for real-time data updates
 router.get('/api/stats', requireAuth, async (req, res) => {
     try {
         const email = req.session.clientEmail;
@@ -67,7 +61,6 @@ router.get('/api/stats', requireAuth, async (req, res) => {
     }
 });
 
-// API endpoint for infringement table data
 router.get('/api/infractions', requireAuth, async (req, res) => {
     try {
         const email = req.session.clientEmail;
@@ -81,7 +74,6 @@ router.get('/api/infractions', requireAuth, async (req, res) => {
     }
 });
 
-// API endpoint to approve an infraction
 router.post('/api/approve', requireAuth, async (req, res) => {
     try {
         const { car_id } = req.body;
@@ -100,7 +92,6 @@ router.post('/api/approve', requireAuth, async (req, res) => {
     }
 });
 
-// Helper function to get dashboard statistics
 async function getDashboardStats(email, pastHours) {
     const stats = {
         parkingUtilization: { used: 0, available: 0, percentage: 0 },
@@ -111,9 +102,8 @@ async function getDashboardStats(email, pastHours) {
     };
 
     try {
-        // Get location_id for the client through locations table
         const [locationRows] = await db.execute(
-            'SELECT location_id FROM locations WHERE client_email = ? LIMIT 1',
+            'SELECT location_id FROM locations WHERE client_email = ?',
             [email]
         );
 
@@ -121,29 +111,29 @@ async function getDashboardStats(email, pastHours) {
             return stats;
         }
 
-        const locationId = locationRows[0].location_id;
+        const locationIds = locationRows.map(row => row.location_id);
+        const placeholders = locationIds.map(() => '?').join(',');
 
-        // Get camera_id and spots_tracked from camera table using location_id
         const [cameraRows] = await db.execute(
-            'SELECT camera_id, spots_tracked FROM camera WHERE location_id = ? LIMIT 1',
-            [locationId]
+            `SELECT camera_id, spots_tracked FROM camera WHERE location_id IN (${placeholders})`,
+            locationIds
         );
 
         if (cameraRows.length === 0) {
             return stats;
         }
 
-        const cameraId = cameraRows[0].camera_id;
+        const cameraIds = cameraRows.map(row => row.camera_id);
+        const cameraPlaceholders = cameraIds.map(() => '?').join(',');
         const spotsTracked = cameraRows[0].spots_tracked;
 
-        // Get foot traffic count from ppl_detections table
         try {
             const [footTrafficRows] = await db.execute(`
                 SELECT COUNT(DISTINCT person_id) AS foot_traffic_count
                 FROM ppl_detections 
-                WHERE camera_id = ? 
+                WHERE camera_id IN (${cameraPlaceholders})
                 AND timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
-            `, [cameraId, pastHours]);
+            `, [...cameraIds, pastHours]);
 
             if (footTrafficRows.length > 0) {
                 stats.footTraffic = footTrafficRows[0].foot_traffic_count || 0;
@@ -152,36 +142,33 @@ async function getDashboardStats(email, pastHours) {
             console.log('Foot traffic table might not exist:', error.message);
         }
 
-        // Get average stay time for cars
         const [avgStayRows] = await db.execute(`
             SELECT AVG(duration) / 60 AS avg_stay_time_minutes 
             FROM car_detections 
-            WHERE camera_id = ? 
+            WHERE camera_id IN (${cameraPlaceholders})
             AND timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
-        `, [cameraId, pastHours]);
+        `, [...cameraIds, pastHours]);
 
         if (avgStayRows.length > 0 && avgStayRows[0].avg_stay_time_minutes) {
             stats.averageStayTime.cars = Math.round(avgStayRows[0].avg_stay_time_minutes * 100) / 100;
         }
 
-        // Calculate parking utilization using the spots_tracked field
         try {
-            // Get spots currently occupied (cars detected in the time period)
             const [spotsUsedRows] = await db.execute(`
                 SELECT COUNT(DISTINCT zone_) as spots_used 
                 FROM car_detections 
-                WHERE camera_id = ? 
+                WHERE camera_id IN (${cameraPlaceholders})
                 AND timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
-            `, [cameraId, pastHours]);
+            `, [...cameraIds, pastHours]);
 
             const spotsUsed = spotsUsedRows[0]?.spots_used || 0;
 
-            // Calculate total spots from spots_tracked field
             let totalSpots = 0;
-            if (spotsTracked) {
-                // Count occurrences of "name" in spots_tracked to get total spots
-                const matches = spotsTracked.match(/name/g);
-                totalSpots = matches ? matches.length : 0;
+            for (const camera of cameraRows) {
+                if (camera.spots_tracked) {
+                    const matches = camera.spots_tracked.match(/name/g);
+                    totalSpots += matches ? matches.length : 0;
+                }
             }
 
             stats.totalSpots = totalSpots;
@@ -195,19 +182,17 @@ async function getDashboardStats(email, pastHours) {
             console.error('Error calculating parking utilization:', error);
         }
 
-        // Get infringement data using correct column name
         const [infractionRows] = await db.execute(`
             SELECT COUNT(*) AS infraction_count
             FROM car_detections 
-            WHERE camera_id = ? 
+            WHERE camera_id IN (${cameraPlaceholders})
             AND timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
-            AND infraction_occurred = 1 
+            AND infraction_occured = 1 
             AND approved = 0
-        `, [cameraId, pastHours]);
+        `, [...cameraIds, pastHours]);
 
         if (infractionRows.length > 0) {
             stats.infringements.count = infractionRows[0].infraction_count || 0;
-            // Calculate infringement rate as percentage of total detections
             const totalDetections = stats.parkingUtilization.used + stats.infringements.count;
             stats.infringements.rate = totalDetections > 0 ? 
                 Math.round((stats.infringements.count / totalDetections) * 100) : 0;
@@ -220,12 +205,10 @@ async function getDashboardStats(email, pastHours) {
     return stats;
 }
 
-// Helper function to get infraction table data
 async function getInfractionData(email, pastHours) {
     try {
-        // Get location_id for the client
         const [locationRows] = await db.execute(
-            'SELECT location_id FROM locations WHERE client_email = ? LIMIT 1',
+            'SELECT location_id FROM locations WHERE client_email = ?',
             [email]
         );
 
@@ -233,39 +216,42 @@ async function getInfractionData(email, pastHours) {
             return [];
         }
 
-        const locationId = locationRows[0].location_id;
+        const locationIds = locationRows.map(row => row.location_id);
+        const placeholders = locationIds.map(() => '?').join(',');
 
-        // Get camera_id from camera table
         const [cameraRows] = await db.execute(
-            'SELECT camera_id FROM camera WHERE location_id = ? LIMIT 1',
-            [locationId]
+            `SELECT camera_id FROM camera WHERE location_id IN (${placeholders})`,
+            locationIds
         );
 
         if (cameraRows.length === 0) {
             return [];
         }
 
-        const cameraId = cameraRows[0].camera_id;
-        console.log('Camera ID found:', cameraId);
+        const cameraIds = cameraRows.map(row => row.camera_id);
+        const cameraPlaceholders = cameraIds.map(() => '?').join(',');
 
-        // Get infraction data using correct column names
         const query = `
-            SELECT car_id, license_plate, 
-                   ROUND(duration/60, 2) as dur_in_minutes, 
-                   zone_ as parking_spot, 
-                   ROUND(time_in_zone/60, 2) as minutes_parked, 
-                   infraction_type,
-                   FROM_UNIXTIME(timestamp_first_detected) as detection_time
-            FROM car_detections 
-            WHERE camera_id = ? 
-              AND timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
-              AND infraction_occurred = 1 
-              AND approved = 0
-            ORDER BY timestamp_first_detected DESC
-            LIMIT 50
+            SELECT cd.car_id, cd.license_plate, 
+                   ROUND(cd.duration/60, 2) as dur_in_minutes, 
+                   cd.zone_ as parking_spot, 
+                   ROUND(cd.time_in_zone/60, 2) as minutes_parked, 
+                   cd.infraction_type,
+                   FROM_UNIXTIME(cd.timestamp_first_detected) as detection_time,
+                   cd.approved,
+                   cd.camera_id,
+                   l.description as property_name
+            FROM car_detections cd
+            LEFT JOIN camera c ON cd.camera_id = c.camera_id
+            LEFT JOIN locations l ON c.location_id = l.location_id
+            WHERE cd.camera_id IN (${cameraPlaceholders})
+              AND cd.timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
+              AND cd.infraction_occured = 1
+            ORDER BY cd.approved ASC, cd.timestamp_first_detected DESC
+            LIMIT 100
         `;
 
-        const [rows] = await db.execute(query, [cameraId, pastHours]);
+        const [rows] = await db.execute(query, [...cameraIds, pastHours]);
         return rows;
     } catch (error) {
         console.error('Error fetching infraction data:', error);
