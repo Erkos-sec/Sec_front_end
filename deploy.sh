@@ -308,11 +308,31 @@ setup_nginx() {
         apt-get install -y nginx
     fi
     
+    # Check if port 80 is in use by another service
+    if lsof -ti:80 &>/dev/null; then
+        warning "Port 80 is already in use"
+        log "Checking for conflicting services..."
+        
+        # Stop common conflicting services
+        for service in apache2 httpd lighttpd; do
+            if systemctl is-active --quiet $service 2>/dev/null; then
+                log "Stopping $service..."
+                systemctl stop $service 2>/dev/null || true
+                systemctl disable $service 2>/dev/null || true
+            fi
+        done
+    fi
+    
     # Create Nginx configuration
     cat > /etc/nginx/sites-available/$APP_NAME << EOF
 server {
     listen 80;
     server_name _;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
     
     location / {
         proxy_pass http://localhost:$PORT;
@@ -326,6 +346,25 @@ server {
         proxy_cache_bypass \$http_upgrade;
         proxy_read_timeout 86400;
     }
+    
+    # Handle static files efficiently
+    location /css/ {
+        proxy_pass http://localhost:$PORT;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    location /js/ {
+        proxy_pass http://localhost:$PORT;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    location /images/ {
+        proxy_pass http://localhost:$PORT;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
 }
 EOF
     
@@ -333,10 +372,26 @@ EOF
     ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
     rm -f /etc/nginx/sites-enabled/default
     
-    # Test and reload Nginx
-    nginx -t && systemctl reload nginx
-    
-    success "Nginx configured successfully"
+    # Test Nginx configuration
+    if nginx -t; then
+        log "Nginx configuration is valid"
+        
+        # Try to start/reload Nginx
+        if systemctl is-active --quiet nginx 2>/dev/null; then
+            systemctl reload nginx || systemctl restart nginx
+        else
+            systemctl start nginx || service nginx start || nginx
+        fi
+        
+        # Enable Nginx to start on boot
+        systemctl enable nginx 2>/dev/null || true
+        
+        success "Nginx configured successfully"
+    else
+        error "Nginx configuration has errors"
+        warning "Continuing deployment without Nginx proxy"
+        warning "Your application will be accessible directly on port $PORT"
+    fi
 }
 
 # Health check
