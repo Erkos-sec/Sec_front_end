@@ -298,57 +298,142 @@ start_application() {
     success "Application started successfully"
 }
 
-# Setup AWS Lightsail Load Balancer (recommended)
-setup_aws_load_balancer() {
-    log "AWS Lightsail Load Balancer Setup Instructions..."
+# Configure Lightsail's built-in reverse proxy
+setup_lightsail_proxy() {
+    log "Configuring Lightsail's built-in reverse proxy..."
     
-    echo ""
-    echo -e "${YELLOW}=== AWS Lightsail Load Balancer Setup ===${NC}"
-    echo ""
-    log "Your application is running on port $PORT"
-    log "For production deployment, use AWS Lightsail Load Balancer instead of Nginx:"
-    echo ""
-    echo -e "${CYAN}1. In AWS Lightsail Console:${NC}"
-    echo "   • Go to Networking → Load Balancers"
-    echo "   • Click 'Create load balancer'"
-    echo "   • Choose your region and availability zone"
-    echo ""
-    echo -e "${CYAN}2. Configure Load Balancer:${NC}"
-    echo "   • Name: erkos-security-lb"
-    echo "   • Target instances: Select your current instance"
-    echo "   • Health check path: / (root path)"
-    echo "   • Target port: $PORT"
-    echo ""
-    echo -e "${CYAN}3. Load Balancer Benefits:${NC}"
-    echo "   • ✅ Automatic port 80 → $PORT routing"
-    echo "   • ✅ SSL/TLS certificate support (HTTPS)"
-    echo "   • ✅ Health monitoring and auto-recovery"
-    echo "   • ✅ High availability and redundancy"
-    echo "   • ✅ No server configuration needed"
-    echo ""
-    echo -e "${CYAN}4. DNS Setup:${NC}"
-    echo "   • Use the load balancer DNS name for your domain"
-    echo "   • Or attach a static IP to the load balancer"
-    echo ""
-    
-    # Check if there are conflicting services on port 80
+    # Check what's running on port 80
     if lsof -ti:80 &>/dev/null; then
-        warning "Port 80 is currently in use by another service"
-        log "Stopping conflicting services for cleaner setup..."
+        PORT_80_SERVICE=$(lsof -ti:80 | head -1)
+        PORT_80_PROCESS=$(ps -p $PORT_80_SERVICE -o comm= 2>/dev/null || echo "unknown")
+        log "Port 80 is being used by: $PORT_80_PROCESS"
         
-        # Stop common conflicting services
-        for service in apache2 httpd lighttpd nginx; do
-            if systemctl is-active --quiet $service 2>/dev/null; then
-                log "Stopping $service..."
-                systemctl stop $service 2>/dev/null || true
-                systemctl disable $service 2>/dev/null || true
-                success "$service stopped"
-            fi
-        done
+        # Configure based on what's running
+        if [[ "$PORT_80_PROCESS" == *"nginx"* ]]; then
+            setup_nginx_proxy
+        elif [[ "$PORT_80_PROCESS" == *"apache"* ]] || [[ "$PORT_80_PROCESS" == *"httpd"* ]]; then
+            setup_apache_proxy
+        else
+            log "Unknown service on port 80: $PORT_80_PROCESS"
+            setup_nginx_proxy  # Default to nginx setup
+        fi
+    else
+        log "No service found on port 80, setting up Nginx..."
+        # Install and configure Nginx if nothing is running
+        if ! command -v nginx &> /dev/null; then
+            log "Installing Nginx..."
+            apt-get update
+            apt-get install -y nginx
+        fi
+        setup_nginx_proxy
     fi
+}
+
+# Configure Nginx as reverse proxy
+setup_nginx_proxy() {
+    log "Configuring Nginx reverse proxy..."
     
-    success "Application ready for AWS Load Balancer integration!"
-    log "Your app is accessible directly at: http://$(curl -s ifconfig.me):$PORT"
+    # Create Nginx configuration for ERKOS app
+    cat > /etc/nginx/sites-available/erkos-dashboard << EOF
+server {
+    listen 80;
+    server_name _;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    
+    location / {
+        proxy_pass http://localhost:$PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 86400;
+    }
+    
+    # Handle static files efficiently
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
+        proxy_pass http://localhost:$PORT;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+EOF
+    
+    # Enable the site and disable default
+    ln -sf /etc/nginx/sites-available/erkos-dashboard /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+    
+    # Test and reload Nginx
+    if nginx -t; then
+        systemctl reload nginx || systemctl restart nginx
+        systemctl enable nginx
+        success "Nginx reverse proxy configured successfully"
+        log "Your app is now accessible on port 80!"
+    else
+        error "Nginx configuration failed"
+        return 1
+    fi
+}
+
+# Configure Apache as reverse proxy
+setup_apache_proxy() {
+    log "Configuring Apache reverse proxy..."
+    
+    # Enable required modules
+    a2enmod proxy proxy_http rewrite headers
+    
+    # Create Apache virtual host
+    cat > /etc/apache2/sites-available/erkos-dashboard.conf << EOF
+<VirtualHost *:80>
+    ServerName _
+    
+    # Security headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Reverse proxy configuration
+    ProxyPreserveHost On
+    ProxyRequests Off
+    ProxyPass / http://localhost:$PORT/
+    ProxyPassReverse / http://localhost:$PORT/
+    
+    # WebSocket support
+    RewriteEngine On
+    RewriteCond %{HTTP:Upgrade} websocket [NC]
+    RewriteCond %{HTTP:Connection} upgrade [NC]
+    RewriteRule ^/?(.*) "ws://localhost:$PORT/\$1" [P,L]
+    
+    # Static file caching
+    <LocationMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg)$">
+        ExpiresActive On
+        ExpiresDefault "access plus 1 year"
+        Header set Cache-Control "public, immutable"
+    </LocationMatch>
+</VirtualHost>
+EOF
+    
+    # Enable the site and disable default
+    a2ensite erkos-dashboard
+    a2dissite 000-default
+    
+    # Test and reload Apache
+    if apache2ctl configtest; then
+        systemctl reload apache2 || systemctl restart apache2
+        systemctl enable apache2
+        success "Apache reverse proxy configured successfully"
+        log "Your app is now accessible on port 80!"
+    else
+        error "Apache configuration failed"
+        return 1
+    fi
 }
 
 # Health check
@@ -382,29 +467,32 @@ main() {
     setup_environment
     setup_firewall
     start_application
-    setup_aws_load_balancer
+    setup_lightsail_proxy
     health_check
     
     success "Deployment completed successfully!"
     log ""
-    log "🎯 Next Steps:"
-    log "1. Set up AWS Lightsail Load Balancer (recommended for production)"
-    log "   See: AWS-LOAD-BALANCER-SETUP.md for detailed instructions"
+    log "🎯 Your ERKOS Security Dashboard is ready!"
     log ""
-    log "2. Current direct access:"
-    log "   http://$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR-IP'):$PORT"
+    log "🌐 Access URLs:"
+    log "   • Standard web access: http://$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR-IP')"
+    log "   • Direct app access: http://$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR-IP'):$PORT"
     log ""
-    log "3. Add firewall rule for port $PORT in Lightsail console"
-    log ""
-    log "🔧 Useful commands:"
+    log "🔧 Management commands:"
     log "  pm2 status           - Check application status"
     log "  pm2 logs $APP_NAME   - View application logs"
     log "  pm2 restart $APP_NAME - Restart application"
     log "  pm2 stop $APP_NAME   - Stop application"
     log ""
     log "📖 Documentation:"
-    log "  AWS-LOAD-BALANCER-SETUP.md - Load balancer setup guide"
-    log "  DEPLOYMENT.md - Complete deployment documentation"
+    log "  DEPLOYMENT.md - Complete deployment guide"
+    log ""
+    log "🚀 Your dashboard features:"
+    log "  • Professional marketing home page"
+    log "  • Secure login system"
+    log "  • Real-time parking analytics"
+    log "  • Interactive charts and statistics"
+    log "  • Mobile-responsive design"
 }
 
 # Run main function
