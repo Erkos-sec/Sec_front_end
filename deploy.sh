@@ -298,100 +298,57 @@ start_application() {
     success "Application started successfully"
 }
 
-# Setup Nginx reverse proxy (optional)
-setup_nginx() {
-    log "Setting up Nginx reverse proxy..."
+# Setup AWS Lightsail Load Balancer (recommended)
+setup_aws_load_balancer() {
+    log "AWS Lightsail Load Balancer Setup Instructions..."
     
-    if ! command -v nginx &> /dev/null; then
-        log "Installing Nginx..."
-        apt-get update
-        apt-get install -y nginx
-    fi
+    echo ""
+    echo -e "${YELLOW}=== AWS Lightsail Load Balancer Setup ===${NC}"
+    echo ""
+    log "Your application is running on port $PORT"
+    log "For production deployment, use AWS Lightsail Load Balancer instead of Nginx:"
+    echo ""
+    echo -e "${CYAN}1. In AWS Lightsail Console:${NC}"
+    echo "   • Go to Networking → Load Balancers"
+    echo "   • Click 'Create load balancer'"
+    echo "   • Choose your region and availability zone"
+    echo ""
+    echo -e "${CYAN}2. Configure Load Balancer:${NC}"
+    echo "   • Name: erkos-security-lb"
+    echo "   • Target instances: Select your current instance"
+    echo "   • Health check path: / (root path)"
+    echo "   • Target port: $PORT"
+    echo ""
+    echo -e "${CYAN}3. Load Balancer Benefits:${NC}"
+    echo "   • ✅ Automatic port 80 → $PORT routing"
+    echo "   • ✅ SSL/TLS certificate support (HTTPS)"
+    echo "   • ✅ Health monitoring and auto-recovery"
+    echo "   • ✅ High availability and redundancy"
+    echo "   • ✅ No server configuration needed"
+    echo ""
+    echo -e "${CYAN}4. DNS Setup:${NC}"
+    echo "   • Use the load balancer DNS name for your domain"
+    echo "   • Or attach a static IP to the load balancer"
+    echo ""
     
-    # Check if port 80 is in use by another service
+    # Check if there are conflicting services on port 80
     if lsof -ti:80 &>/dev/null; then
-        warning "Port 80 is already in use"
-        log "Checking for conflicting services..."
+        warning "Port 80 is currently in use by another service"
+        log "Stopping conflicting services for cleaner setup..."
         
         # Stop common conflicting services
-        for service in apache2 httpd lighttpd; do
+        for service in apache2 httpd lighttpd nginx; do
             if systemctl is-active --quiet $service 2>/dev/null; then
                 log "Stopping $service..."
                 systemctl stop $service 2>/dev/null || true
                 systemctl disable $service 2>/dev/null || true
+                success "$service stopped"
             fi
         done
     fi
     
-    # Create Nginx configuration
-    cat > /etc/nginx/sites-available/$APP_NAME << EOF
-server {
-    listen 80;
-    server_name _;
-    
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    
-    location / {
-        proxy_pass http://localhost:$PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_read_timeout 86400;
-    }
-    
-    # Handle static files efficiently
-    location /css/ {
-        proxy_pass http://localhost:$PORT;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    location /js/ {
-        proxy_pass http://localhost:$PORT;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    location /images/ {
-        proxy_pass http://localhost:$PORT;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-EOF
-    
-    # Enable site
-    ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
-    rm -f /etc/nginx/sites-enabled/default
-    
-    # Test Nginx configuration
-    if nginx -t; then
-        log "Nginx configuration is valid"
-        
-        # Try to start/reload Nginx
-        if systemctl is-active --quiet nginx 2>/dev/null; then
-            systemctl reload nginx || systemctl restart nginx
-        else
-            systemctl start nginx || service nginx start || nginx
-        fi
-        
-        # Enable Nginx to start on boot
-        systemctl enable nginx 2>/dev/null || true
-        
-        success "Nginx configured successfully"
-    else
-        error "Nginx configuration has errors"
-        warning "Continuing deployment without Nginx proxy"
-        warning "Your application will be accessible directly on port $PORT"
-    fi
+    success "Application ready for AWS Load Balancer integration!"
+    log "Your app is accessible directly at: http://$(curl -s ifconfig.me):$PORT"
 }
 
 # Health check
@@ -425,18 +382,29 @@ main() {
     setup_environment
     setup_firewall
     start_application
-    setup_nginx
+    setup_aws_load_balancer
     health_check
     
     success "Deployment completed successfully!"
-    log "Application is running on http://$(curl -s ifconfig.me):80"
-    log "You can also access it directly on port $PORT"
     log ""
-    log "Useful commands:"
+    log "🎯 Next Steps:"
+    log "1. Set up AWS Lightsail Load Balancer (recommended for production)"
+    log "   See: AWS-LOAD-BALANCER-SETUP.md for detailed instructions"
+    log ""
+    log "2. Current direct access:"
+    log "   http://$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR-IP'):$PORT"
+    log ""
+    log "3. Add firewall rule for port $PORT in Lightsail console"
+    log ""
+    log "🔧 Useful commands:"
     log "  pm2 status           - Check application status"
     log "  pm2 logs $APP_NAME   - View application logs"
     log "  pm2 restart $APP_NAME - Restart application"
     log "  pm2 stop $APP_NAME   - Stop application"
+    log ""
+    log "📖 Documentation:"
+    log "  AWS-LOAD-BALANCER-SETUP.md - Load balancer setup guide"
+    log "  DEPLOYMENT.md - Complete deployment documentation"
 }
 
 # Run main function
