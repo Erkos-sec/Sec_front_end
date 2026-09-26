@@ -1,581 +1,1505 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ERKOS Security - Dashboard</title>
-    <link rel="stylesheet" href="/css/dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --bg: #0a0d12; --panel: #11151c; --panel2: #161b23;
+            --border: #1e242d; --border2: #2b333f;
+            --text: #e6ebf2; --muted: #8a94a3; --faint: #5a6472;
+            --accent: #10b981; --accent2: #34d399;
+            --red: #f0556a; --amber: #f5a524; --grid: #1a1f27;
+        }
+        [data-theme="light"] {
+            --bg: #eef0f3; --panel: #ffffff; --panel2: #f7f9fb;
+            --border: #e3e6ea; --border2: #d3d8df;
+            --text: #10151c; --muted: #5b6472; --faint: #98a1b0;
+            --accent: #059669; --accent2: #10b981;
+            --red: #e23744; --amber: #d97706; --grid: #eceef1;
+        }
+
+        @keyframes erkpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+        @keyframes erkspin  { to{transform:rotate(360deg)} }
+        @keyframes erkfade  { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+
+        ::-webkit-scrollbar { height:9px; width:9px; }
+        ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:6px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'IBM Plex Sans', system-ui, sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+        }
+        button { font-family: inherit; }
+
+        /* ===== TOP BAR ===== */
+        .topbar {
+            display: flex; align-items: center; gap: 18px;
+            height: 54px; padding: 0 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel);
+            position: sticky; top: 0; z-index: 30;
+        }
+        .topbar-left { display:flex; align-items:center; gap:11px; }
+        .menu-btn {
+            display:flex; flex-direction:column; gap:3px;
+            padding:7px; background:transparent;
+            border:1px solid var(--border); border-radius:6px; cursor:pointer;
+        }
+        .menu-btn span { display:block; width:14px; height:1.5px; background:var(--muted); }
+        .erkos-logo { display:flex; align-items:center; gap:9px; }
+        .erkos-icon { display:flex; align-items:center; justify-content:center; }
+        .erkos-icon img { width:36px; height:36px; object-fit:contain; }
+        [data-theme="dark"] .erkos-icon img { filter: brightness(0) invert(1); }
+        .erkos-wordmark { display:flex; flex-direction:column; line-height:1.05; }
+        .erkos-name { font-weight:700; letter-spacing:.14em; font-size:14px; }
+        .erkos-sub  { font-size:8.5px; letter-spacing:.22em; color:var(--faint); font-weight:600; }
+        .live-badge {
+            display:flex; align-items:center; gap:6px;
+            margin-left:6px; padding:4px 9px;
+            border:1px solid var(--border); border-radius:999px;
+        }
+        .live-dot {
+            width:6px; height:6px; border-radius:50%; background:var(--accent);
+            animation: erkpulse 1.6s ease-in-out infinite;
+        }
+        .live-text { font-size:9.5px; letter-spacing:.14em; font-weight:600; color:var(--accent2); }
+
+        /* Tabs */
+        .tab-row { display:flex; align-items:center; gap:2px; margin-left:8px; }
+        .tab-btn {
+            background:transparent; border:none; border-bottom:2px solid transparent;
+            padding:9px 13px; font-size:12px; font-weight:600;
+            cursor:pointer; border-radius:6px 6px 0 0;
+            color:var(--muted); transition: color .15s, border-color .15s;
+        }
+        .tab-btn.active { color:var(--text); border-bottom-color:var(--accent); background:var(--panel2); }
+
+        .topbar-spacer { flex:1; }
+
+        /* Period selector */
+        .period-bar {
+            display:flex; align-items:center; gap:3px; padding:3px;
+            background:var(--bg); border:1px solid var(--border); border-radius:8px;
+        }
+        .period-btn {
+            background:transparent; color:var(--muted);
+            border:1px solid transparent; padding:5px 11px;
+            font-size:11px; font-weight:600;
+            font-family:'IBM Plex Mono',monospace;
+            cursor:pointer; border-radius:5px; letter-spacing:.04em;
+            transition: all .15s;
+        }
+        .period-btn.active { background:var(--accent); color:#06231a; border-color:var(--accent); }
+
+        .theme-btn {
+            width:34px; height:34px;
+            display:flex; align-items:center; justify-content:center;
+            background:transparent; border:1px solid var(--border);
+            border-radius:7px; cursor:pointer; color:var(--muted); font-size:14px;
+        }
+        .topbar-sep { width:1px; height:24px; background:var(--border); }
+        .user-area { display:flex; align-items:center; gap:9px; }
+        .user-avatar {
+            width:30px; height:30px; border-radius:50%;
+            background:var(--panel2); border:1px solid var(--border2);
+            display:flex; align-items:center; justify-content:center;
+            font-size:11px; font-weight:700; color:var(--muted);
+        }
+        .logout-btn {
+            display:flex; align-items:center; gap:7px;
+            background:transparent; border:1px solid var(--border);
+            border-radius:7px; padding:7px 11px; cursor:pointer;
+            color:var(--muted); font-size:11px; font-weight:600;
+            letter-spacing:.04em;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main { padding:16px; display:flex; flex-direction:column; gap:14px; }
+        .view { display:none; }
+        .view.active { display:flex; flex-direction:column; gap:14px; }
+
+        /* Sub-bar */
+        .subbar {
+            display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+        }
+        .subbar-title h2 { margin:0; font-size:17px; font-weight:700; letter-spacing:-.01em; }
+        .subbar-title p  { margin:0; font-size:11px; color:var(--muted); }
+        .violations-pill {
+            display:flex; align-items:center; gap:7px;
+            padding:6px 11px; background:var(--panel); border:1px solid var(--border); border-radius:7px;
+        }
+        .violations-dot { width:7px; height:7px; border-radius:50%; background:var(--red); }
+        .violations-text { font-size:11px; color:var(--muted); }
+        .violations-text b { color:var(--text); font-family:'IBM Plex Mono',monospace; }
+        .timestamp { font-size:10.5px; color:var(--faint); font-family:'IBM Plex Mono',monospace; }
+        .refresh-btn {
+            display:flex; align-items:center; gap:7px;
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:7px; padding:7px 11px; cursor:pointer;
+            color:var(--text); font-size:11px; font-weight:600;
+        }
+        .refresh-icon {
+            display:block; width:12px; height:12px;
+            border:1.6px solid currentColor; border-top-color:transparent;
+            border-radius:50%;
+        }
+        .export-btn {
+            background:var(--accent); border:1px solid var(--accent);
+            border-radius:7px; padding:7px 13px; cursor:pointer;
+            color:#06231a; font-size:11px; font-weight:700;
+        }
+
+        /* KPI strip */
+        .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+        .kpi-card {
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:9px; padding:13px 14px;
+            display:flex; flex-direction:column; gap:9px;
+            animation: erkfade .3s ease;
+        }
+        .kpi-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+        .kpi-label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:600; }
+        .kpi-delta { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; white-space:nowrap; }
+        .kpi-value-row { display:flex; align-items:flex-end; gap:4px; }
+        .kpi-value { font-family:'IBM Plex Mono',monospace; font-size:30px; font-weight:600; letter-spacing:-.02em; line-height:1; }
+        .kpi-unit  { font-size:12px; color:var(--muted); margin-bottom:3px; }
+        .kpi-spark { width:100%; height:24px; overflow:visible; }
+
+        /* Main grid */
+        .main-grid { display:grid; grid-template-columns:1.7fr 1fr 1fr; gap:12px; }
+        .panel-card {
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:9px; padding:14px;
+            display:flex; flex-direction:column; gap:12px;
+        }
+        .card-head { display:flex; align-items:center; justify-content:space-between; }
+        .card-title { font-size:13px; font-weight:600; }
+        .card-subtitle { font-size:10.5px; color:var(--faint); }
+        .card-title-group { display:flex; flex-direction:column; gap:2px; }
+        .card-value-right { text-align:right; }
+        .card-big-num { font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600; }
+        .card-tiny-label { font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+
+        /* Traffic chart */
+        .traffic-svg { width:100%; height:158px; }
+
+        /* Ring cards */
+        .ring-wrapper {
+            position:relative; display:flex; align-items:center;
+            justify-content:center; flex:1; min-height:140px;
+        }
+        .ring-center {
+            position:absolute; text-align:center;
+        }
+        .ring-big { font-family:'IBM Plex Mono',monospace; font-size:32px; font-weight:600; letter-spacing:-.02em; line-height:1; }
+        .ring-label { font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-top:2px; }
+        .badge-pill {
+            display:flex; align-items:center; gap:5px;
+            padding:3px 8px; border-radius:999px;
+            background:var(--panel2); border:1px solid var(--border);
+            font-size:9.5px; letter-spacing:.1em; font-weight:600;
+        }
+        .badge-pill .dot { width:5px; height:5px; border-radius:50%; animation: erkpulse 1.6s infinite; }
+        .mini-stats { display:flex; gap:8px; }
+        .mini-stat {
+            flex:1; padding:9px 10px;
+            background:var(--panel2); border-radius:7px; border:1px solid var(--border);
+        }
+        .mini-stat-label { font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+        .mini-stat-val   { font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600; margin-top:2px; }
+
+        /* Traffic legend */
+        .traffic-legend { display:flex; align-items:center; justify-content:space-between; }
+        .legend-items  { display:flex; gap:16px; }
+        .legend-item   { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+        .legend-box    { width:8px; height:8px; border-radius:2px; }
+        .legend-peak   { font-size:11px; color:var(--muted); }
+        .legend-peak b { color:var(--text); font-family:'IBM Plex Mono',monospace; }
+
+        /* ===== INFRACTION TABLE ===== */
+        .table-card {
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:9px; overflow:hidden;
+        }
+        .table-topbar {
+            display:flex; align-items:center; gap:12px;
+            padding:14px; flex-wrap:wrap;
+        }
+        .table-title { font-size:13px; font-weight:600; }
+        .pending-chip {
+            font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+            padding:2px 8px; border-radius:999px;
+            background: color-mix(in srgb,var(--red) 16%,transparent);
+            color:var(--red);
+        }
+        .search-box {
+            display:flex; align-items:center; gap:7px;
+            padding:6px 10px; background:var(--bg);
+            border:1px solid var(--border); border-radius:7px;
+        }
+        .search-box input {
+            background:transparent; border:none; outline:none;
+            color:var(--text); font-family:inherit; font-size:12px; width:190px;
+        }
+        .filter-row { display:flex; gap:6px; padding:0 14px 12px; flex-wrap:wrap; }
+        .filter-chip {
+            background:var(--panel2); color:var(--muted);
+            border:1px solid var(--border); padding:4px 11px;
+            font-size:11px; font-weight:600; cursor:pointer;
+            border-radius:999px; font-family:inherit; transition: all .15s;
+        }
+        .filter-chip.active { background:var(--accent); color:#06231a; border-color:var(--accent); }
+
+        .table-wrap { overflow:auto; max-height:380px; border-top:1px solid var(--border); }
+        .infrac-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+        .infrac-table th {
+            padding:10px 12px; text-align:left;
+            font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;
+            color:var(--faint); font-weight:600; cursor:pointer; white-space:nowrap;
+            position:sticky; top:0; background:var(--panel); user-select:none;
+        }
+        .infrac-table th:last-child { text-align:right; }
+        .sort-arrow { color:var(--accent); }
+        .infrac-table td { padding:10px 12px; border-top:1px solid var(--border); white-space:nowrap; }
+        .infrac-table td:last-child { text-align:right; }
+        .td-mono  { font-family:'IBM Plex Mono',monospace; }
+        .td-plate { font-family:'IBM Plex Mono',monospace; font-weight:600; }
+        .td-muted { color:var(--muted); }
+        .td-right { text-align:right; }
+        .type-dot  { width:7px; height:7px; border-radius:2px; display:inline-block; margin-right:6px; vertical-align:middle; }
+        .approve-btn {
+            padding:4px 13px; border-radius:6px;
+            background:var(--accent); border:1px solid var(--accent);
+            font-size:11px; font-weight:700; color:#06231a; cursor:pointer; font-family:inherit;
+        }
+        .cleared-badge {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:4px 9px; border-radius:6px;
+            background:var(--panel2); border:1px solid var(--border2);
+            font-size:11px; font-weight:600; color:var(--muted);
+        }
+        .cleared-check { color:var(--accent); }
+        .empty-state {
+            padding:48px; text-align:center; color:var(--muted);
+        }
+        .empty-ring {
+            width:42px; height:42px; border-radius:50%;
+            border:2px solid var(--accent); color:var(--accent);
+            display:flex; align-items:center; justify-content:center;
+            font-size:20px; margin:0 auto 12px;
+        }
+        .empty-title { font-weight:600; color:var(--text); }
+        .empty-sub   { font-size:11.5px; margin-top:3px; }
+
+        /* ===== INFRACTION DETAIL MODAL ===== */
+        .modal-overlay {
+            position:fixed; inset:0; background:rgba(0,0,0,0.7);
+            display:none; align-items:center; justify-content:center;
+            z-index:1000; backdrop-filter:blur(4px);
+        }
+        .modal-overlay.active { display:flex; }
+        .modal-content {
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:12px; width:90%; max-width:800px;
+            max-height:90vh; overflow-y:auto;
+            display:flex; flex-direction:column;
+        }
+        .modal-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:16px 20px; border-bottom:1px solid var(--border);
+        }
+        .modal-title { font-size:16px; font-weight:700; }
+        .modal-close {
+            width:32px; height:32px; border-radius:7px;
+            background:transparent; border:1px solid var(--border);
+            color:var(--muted); cursor:pointer; font-size:18px;
+            display:flex; align-items:center; justify-content:center;
+        }
+        .modal-close:hover { background:var(--bg); color:var(--text); }
+        .modal-body { padding:20px; display:flex; flex-direction:column; gap:20px; }
+        .detail-grid {
+            display:grid; grid-template-columns:repeat(2,1fr); gap:16px;
+        }
+        .detail-item { display:flex; flex-direction:column; gap:4px; }
+        .detail-label {
+            font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+            color:var(--faint); font-weight:600;
+        }
+        .detail-value {
+            font-size:13px; color:var(--text); font-family:'IBM Plex Mono',monospace;
+        }
+        .video-container {
+            background:var(--bg); border:1px solid var(--border);
+            border-radius:8px; aspect-ratio:16/9;
+            display:flex; align-items:center; justify-content:center;
+            color:var(--muted); font-size:13px;
+        }
+        .video-placeholder {
+            display:flex; flex-direction:column; align-items:center; gap:8px;
+        }
+        .video-placeholder-icon {
+            width:48px; height:48px; border-radius:50%;
+            border:2px solid var(--border); display:flex;
+            align-items:center; justify-content:center; font-size:20px;
+        }
+        .infrac-table tbody tr { cursor:pointer; transition:background .15s; }
+        .infrac-table tbody tr:hover { background:var(--panel2); }
+
+        /* ===== COMPONENTS VIEW ===== */
+        .comp-section { display:flex; flex-direction:column; gap:12px; }
+        .comp-section-label {
+            font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+            color:var(--faint); font-weight:600; font-family:'IBM Plex Mono',monospace;
+        }
+        .comp-row { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
+        .comp-variant { display:flex; flex-direction:column; gap:8px; }
+        .comp-variant-label { font-size:10px; color:var(--faint); font-family:'IBM Plex Mono',monospace; }
+
+        /* Footer */
+        .dash-footer {
+            text-align:center; font-size:10.5px; color:var(--faint);
+            padding:6px 0 4px; letter-spacing:.04em;
+        }
+
+        /* ===== RESPONSIVE ===== */
+
+        /* Tablet */
+        @media (max-width:1100px) {
+            .main-grid  { grid-template-columns:1fr 1fr; }
+            .kpi-strip  { grid-template-columns:repeat(2,1fr); }
+        }
+
+        /* Mobile */
+        @media (max-width:700px) {
+            /* Topbar collapses — period bar hidden (inline strip used instead) */
+            .topbar {
+                height:48px; gap:10px; padding:0 12px;
+                position:fixed; top:0; left:0; right:0; z-index:40;
+            }
+            .tab-row    { display:none; }
+            .period-bar { display:none; }
+            .topbar-sep { display:none; }
+            .erkos-sub  { display:none; }
+            .live-badge { display:none; }
+            .user-avatar{ display:none; }
+            .logout-btn { padding:6px 9px; font-size:10px; letter-spacing:0; }
+
+            /* Push content below fixed topbar */
+            body { padding-top:48px; padding-bottom:60px; }
+            .main { padding:12px; gap:12px; }
+
+            /* KPI: 2 columns */
+            .kpi-strip  { grid-template-columns:1fr 1fr; gap:8px; }
+            .kpi-value  { font-size:24px; }
+
+            /* Main grid: single column */
+            .main-grid  { grid-template-columns:1fr; gap:10px; }
+
+            /* Subbar: stack neatly */
+            .subbar { gap:8px; }
+            .subbar-title h2 { font-size:15px; }
+            .timestamp { display:none; }
+            .export-btn { display:none; }
+
+            /* Table: full-width horizontal scroll */
+            .table-wrap { max-height:none; }
+            .search-box input { width:130px; }
+            .filter-row { overflow-x:auto; flex-wrap:nowrap; padding-bottom:10px; }
+            .filter-row::-webkit-scrollbar { height:3px; }
+
+            /* Ring cards: side-by-side on mobile */
+            .ring-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+            .ring-wrapper { min-height:120px; }
+            .ring-big { font-size:26px; }
+
+            /* Bottom nav bar */
+            .mobile-nav {
+                display:flex;
+                position:fixed; bottom:0; left:0; right:0; z-index:40;
+                background:var(--panel); border-top:1px solid var(--border);
+                height:56px;
+            }
+            .mobile-nav-btn {
+                flex:1; display:flex; flex-direction:column; align-items:center;
+                justify-content:center; gap:3px; background:transparent; border:none;
+                color:var(--muted); font-size:9px; font-weight:600;
+                letter-spacing:.06em; cursor:pointer; padding:6px 0;
+                border-top:2px solid transparent; transition:color .15s,border-color .15s;
+            }
+            .mobile-nav-btn.active { color:var(--accent); border-top-color:var(--accent); }
+            .mobile-nav-icon { font-size:18px; line-height:1; }
+
+            /* Mobile period strip — shown inside page, not topbar */
+            .mobile-period-strip {
+                display:flex; gap:6px; overflow-x:auto; padding:0 0 4px;
+            }
+            .mobile-period-strip::-webkit-scrollbar { height:3px; }
+            .mobile-period-strip .period-btn {
+                flex-shrink:0; padding:6px 14px; font-size:11px;
+                background:var(--panel); border:1px solid var(--border);
+                border-radius:999px;
+            }
+            .mobile-period-strip .period-btn.active {
+                background:var(--accent); color:#06231a; border-color:var(--accent);
+            }
+
+            /* Approve button touch target */
+            .approve-btn { padding:8px 14px; font-size:12px; }
+        }
+
+        /* Keep Components tab scrollable on mobile */
+        @media (max-width:700px) {
+            .comp-row { overflow-x:auto; flex-wrap:nowrap; padding-bottom:8px; }
+            .comp-row::-webkit-scrollbar { height:3px; }
+            .comp-variant { flex-shrink:0; }
+        }
+
+        /* Show mobile nav only on mobile */
+        .mobile-nav { display:none; }
+        .mobile-period-strip { display:none; }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar-overlay {
+            display:none; position:fixed; inset:0; z-index:50;
+            background:rgba(0,0,0,.5); backdrop-filter:blur(2px);
+        }
+        .sidebar-overlay.open { display:block; }
+        .sidebar {
+            position:fixed; top:0; left:0; bottom:0; z-index:51;
+            width:260px; background:var(--panel);
+            border-right:1px solid var(--border);
+            display:flex; flex-direction:column;
+            transform:translateX(-100%);
+            transition:transform .25s cubic-bezier(.4,0,.2,1);
+            overflow-y:auto;
+        }
+        .sidebar.open { transform:translateX(0); }
+        .sidebar-head {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:16px; border-bottom:1px solid var(--border);
+            position:sticky; top:0; background:var(--panel); z-index:1;
+        }
+        .sidebar-close {
+            width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+            background:transparent; border:1px solid var(--border);
+            border-radius:6px; cursor:pointer; color:var(--muted); font-size:16px;
+        }
+        .sidebar-section { padding:8px 0; border-bottom:1px solid var(--border); }
+        .sidebar-section-label {
+            padding:8px 16px 4px;
+            font-size:9.5px; letter-spacing:.12em; text-transform:uppercase;
+            color:var(--faint); font-weight:600; font-family:'IBM Plex Mono',monospace;
+        }
+        .sidebar-item {
+            display:flex; align-items:center; gap:10px;
+            padding:10px 16px; cursor:pointer;
+            color:var(--muted); font-size:13px; font-weight:500;
+            background:transparent; border:none; width:100%; text-align:left;
+            transition:background .12s, color .12s;
+        }
+        .sidebar-item:hover   { background:var(--panel2); color:var(--text); }
+        .sidebar-item.active  { color:var(--accent); }
+        .sidebar-item-icon    { font-size:16px; width:20px; text-align:center; }
+        .sidebar-item-badge {
+            margin-left:auto; font-size:10px; font-weight:700;
+            font-family:'IBM Plex Mono',monospace;
+            background:color-mix(in srgb,var(--red) 18%,transparent);
+            color:var(--red); padding:1px 6px; border-radius:999px;
+        }
+        .sidebar-footer {
+            margin-top:auto; padding:16px;
+            border-top:1px solid var(--border);
+            font-size:10.5px; color:var(--faint);
+            font-family:'IBM Plex Mono',monospace;
+        }
+    </style>
 </head>
 <body>
-    <header class="header">
-        <div class="header-left">
-            <button class="menu-button" onclick="toggleSidebar()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-            <span class="menu-text">MENU</span>
-        </div>
 
-        <div class="header-center">
-            <div class="logo">
-                <img src="/images/erkos.png" alt="ERKOS Logo" width="40" height="40">
-            </div>
-            <div class="brand-info">
-                <h1 class="brand-name">ERKOS</h1>
-                <p class="brand-subtitle">SECURITY</p>
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<nav class="sidebar" id="sidebar" aria-label="Sidebar navigation">
+    <div class="sidebar-head">
+        <div class="erkos-logo">
+            <div class="erkos-icon"><img src="/images/erkos.png" alt="ERKOS"></div>
+            <div class="erkos-wordmark">
+                <span class="erkos-name">ERKOS</span>
+                <span class="erkos-sub">SECURITY&nbsp;OPS</span>
             </div>
         </div>
+        <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">&times;</button>
+    </div>
 
-        <div class="header-right">
-            <div class="time-filter">
-                <select id="timeFilter" onchange="updateTimeFilter()">
-                    <option value="24">Last 24 Hours</option>
-                    <option value="168" selected>Last 7 Days</option>
-                    <option value="720">Last 30 Days</option>
-                    <option value="8760">Last Year</option>
-                </select>
-            </div>
-            <button class="logout-button" onclick="logout()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16,17 21,12 16,7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-            </button>
-            <span class="logout-text">LOGOUT</span>
-        </div>
-    </header>
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Views</div>
+        <button class="sidebar-item active" data-sidebar-tab="overview">
+            <span class="sidebar-item-icon">&#9783;</span> Overview
+        </button>
+        <a class="sidebar-item" href="/cameras" style="text-decoration:none">
+            <span class="sidebar-item-icon">&#128249;</span> Camera Feeds
+        </a>
+    </div>
 
-    <main class="main-content">
-        <div class="dashboard-grid">
-            <div class="metric-card parking-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <path d="M9 3v18"></path>
-                        </svg>
-                        <h3>Parking Utilization</h3>
-                    </div>
-                    <div class="card-badge">Live</div>
-                </div>
-                <div class="card-content">
-                    <div class="chart-section">
-                        <div class="chart-wrapper">
-                            <canvas id="parkingChart"></canvas>
-                            <div class="chart-center-text">
-                                <span class="center-value" id="parkingPercentage"><%= stats.parkingUtilization.percentage || 0 %>%</span>
-                                <span class="center-label">Occupied</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stats-section">
-                        <div class="stat-item">
-                            <div class="stat-icon occupied">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H8.5a1 1 0 0 0-.8.4L5 11l-5.16 1.86a1 1 0 0 0-.84.99V16h3"></path>
-                                </svg>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-label">Occupied Spots</span>
-                                <span class="stat-value" id="occupiedSpots"><%= stats.parkingUtilization.used || 0 %></span>
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-icon available">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <path d="m9 12 2 2 4-4"></path>
-                                </svg>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-label">Available Spots</span>
-                                <span class="stat-value" id="availableSpots"><%= stats.parkingUtilization.available || 0 %></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Time Period</div>
+        <button class="sidebar-item sidebar-period" data-period="24">
+            <span class="sidebar-item-icon">&#8986;</span> Last 24 Hours
+        </button>
+        <button class="sidebar-item sidebar-period active-period" data-period="168">
+            <span class="sidebar-item-icon">&#8986;</span> Last 7 Days
+        </button>
+        <button class="sidebar-item sidebar-period" data-period="720">
+            <span class="sidebar-item-icon">&#8986;</span> Last 30 Days
+        </button>
+        <button class="sidebar-item sidebar-period" data-period="8760">
+            <span class="sidebar-item-icon">&#8986;</span> Last Year
+        </button>
+    </div>
 
-            <div class="metric-card stay-time-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <h3>Average Stay Time</h3>
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div class="stay-metrics">
-                        <div class="stay-metric-item primary">
-                            <div class="stay-icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H8.5a1 1 0 0 0-.8.4L5 11l-5.16 1.86a1 1 0 0 0-.84.99V16h3m0 0a2 2 0 1 0 4 0m10 0a2 2 0 1 0 4 0"></path>
-                                </svg>
-                            </div>
-                            <div class="stay-details">
-                                <span class="stay-label">Vehicles</span>
-                                <div class="stay-value-wrapper">
-                                    <span class="stay-value" id="carsStayTime"><%= stats.averageStayTime.cars.toFixed(1) || 0 %></span>
-                                    <span class="stay-unit">minutes</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="carsProgress" style="width: <%= Math.min(stats.averageStayTime.cars * 2, 100) %>%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="stay-metric-item secondary">
-                            <div class="stay-icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                            </div>
-                            <div class="stay-details">
-                                <span class="stay-label">Foot Traffic</span>
-                                <div class="stay-value-wrapper">
-                                    <span class="stay-value" id="peopleCount"><%= stats.footTraffic || 0 %></span>
-                                    <span class="stay-unit">people</span>
-                                </div>
-                                <div class="trend-badge positive">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                        <polyline points="18 15 12 9 6 15"></polyline>
-                                    </svg>
-                                    <span>Active</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Actions</div>
+        <button class="sidebar-item" id="sidebarRefresh">
+            <span class="sidebar-item-icon">&#8635;</span> Refresh Data
+        </button>
+        <button class="sidebar-item" id="sidebarTheme">
+            <span class="sidebar-item-icon" id="sidebarThemeIcon">☀</span> Toggle Theme
+        </button>
+    </div>
 
-            <div class="metric-card traffic-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                        <h3>Foot Traffic Analytics</h3>
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div class="traffic-visual">
-                        <div class="traffic-chart">
-                            <canvas id="trafficChart"></canvas>
-                        </div>
-                        <div class="traffic-stats">
-                            <div class="traffic-stat">
-                                <span class="traffic-number" id="footTrafficCount"><%= stats.footTraffic || 0 %></span>
-                                <span class="traffic-label">Total Visitors</span>
-                            </div>
-                            <div class="traffic-indicators">
-                                <div class="indicator">
-                                    <span class="indicator-dot peak"></span>
-                                    <span class="indicator-text">Peak Hours</span>
-                                </div>
-                                <div class="indicator">
-                                    <span class="indicator-dot normal"></span>
-                                    <span class="indicator-text">Normal Flow</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Account</div>
+        <button class="sidebar-item" onclick="window.location.href='/auth/logout'">
+            <span class="sidebar-item-icon">&#8594;</span> Logout
+        </button>
+    </div>
 
-            <div class="metric-card infringement-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        <h3>Infringement Rate</h3>
-                    </div>
-                    <div class="card-badge alert">Alert</div>
-                </div>
-                <div class="card-content">
-                    <div class="infringement-visual">
-                        <div class="chart-wrapper">
-                            <canvas id="infringementChart"></canvas>
-                            <div class="chart-center-text">
-                                <span class="center-value warning" id="infringementPercentage"><%= stats.infringements.rate || 0 %>%</span>
-                                <span class="center-label">Rate</span>
-                            </div>
-                        </div>
-                        <div class="infringement-stats">
-                            <div class="infringement-item">
-                                <div class="infringement-number" id="infringementCount"><%= stats.infringements.count || 0 %></div>
-                                <div class="infringement-label">Active Violations</div>
-                            </div>
-                            <div class="infringement-legend">
-                                <div class="legend-row">
-                                    <span class="legend-dot compliant"></span>
-                                    <span class="legend-text">Compliant: <strong id="compliantPercent"><%= 100 - (stats.infringements.rate || 0) %>%</strong></span>
-                                </div>
-                                <div class="legend-row">
-                                    <span class="legend-dot violation"></span>
-                                    <span class="legend-text">Violations: <strong id="violationPercent"><%= stats.infringements.rate || 0 %>%</strong></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+    <div class="sidebar-footer">ERKOS Security Dashboard &copy; 2026</div>
+</nav>
 
-    <div class="table-section">
-        <div class="table-header">
-            <div class="table-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <h2>Recent Infractions</h2>
-            </div>
-            <div class="table-controls">
-                <button id="refreshTable" class="refresh-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 4 23 10 17 10"></polyline>
-                        <polyline points="1 20 1 14 7 14"></polyline>
-                        <path d="m3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
-                    Refresh Data
-                </button>
-            </div>
-        </div>
-        <div class="table-container">
-            <table id="infractionsTable" class="infractions-table">
-                <thead>
-                    <tr>
-                        <th>Car ID</th>
-                        <th>License Plate</th>
-                        <th>Property</th>
-                        <th>Duration (Min)</th>
-                        <th>Parking Spot</th>
-                        <th>Minutes Parked</th>
-                        <th>Infraction Type</th>
-                        <th>Detection Time</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="infractionsTableBody">
-                </tbody>
-            </table>
-            <div id="noInfractions" class="no-data" style="display: none;">
-                <div class="no-data-icon">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="m9 12 2 2 4-4"></path>
-                    </svg>
-                </div>
-                <h3>No Active Infractions</h3>
-                <p>All violations have been resolved or no infractions detected in the selected time period.</p>
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+    <div class="topbar-left">
+        <button class="menu-btn" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="erkos-logo">
+            <div class="erkos-icon"><img src="/images/erkos.png" alt="ERKOS"></div>
+            <div class="erkos-wordmark">
+                <span class="erkos-name">ERKOS</span>
+                <span class="erkos-sub">SECURITY&nbsp;OPS</span>
             </div>
         </div>
     </div>
 
-    <footer class="footer">
-        <p>&copy; 2024 • ERKOS SECURITY • Powered by Advanced Analytics</p>
-    </footer>
+    <div class="tab-row">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+    </div>
 
-    <script>
-        let parkingChart, infringementChart, trafficChart;
+    <div class="topbar-spacer"></div>
 
-        const dashboardData = {
-            parkingUtilization: {
-                used: <%= stats.parkingUtilization.used || 0 %>,
-                available: <%= stats.parkingUtilization.available || 0 %>,
-                percentage: <%= stats.parkingUtilization.percentage || 0 %>
-            },
-            averageStayTime: {
-                cars: <%= stats.averageStayTime.cars || 0 %>,
-                people: <%= stats.averageStayTime.people || 0 %>
-            },
-            footTraffic: <%= stats.footTraffic || 0 %>,
-            infringements: {
-                count: <%= stats.infringements.count || 0 %>,
-                rate: <%= stats.infringements.rate || 0 %>
-            },
-            totalSpots: <%= stats.totalSpots || 0 %>
-        };
+    <div class="period-bar" id="periodBar">
+        <button class="period-btn" data-period="24">24H</button>
+        <button class="period-btn active" data-period="168">7D</button>
+        <button class="period-btn" data-period="720">30D</button>
+        <button class="period-btn" data-period="8760">1Y</button>
+    </div>
 
-        function initParkingChart() {
-            const ctx = document.getElementById('parkingChart').getContext('2d');
-            parkingChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Available', 'Occupied'],
-                    datasets: [{
-                        data: [dashboardData.parkingUtilization.available, dashboardData.parkingUtilization.used],
-                        backgroundColor: ['#E2E8F0', '#4F46E5'],
-                        borderWidth: 0,
-                        cutout: '75%'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                    return `${label}: ${value} spots (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    <button class="theme-btn" id="themeToggle" title="Toggle theme">☀</button>
 
-        function initInfringementChart() {
-            const ctx = document.getElementById('infringementChart').getContext('2d');
-            infringementChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Compliant', 'Violations'],
-                    datasets: [{
-                        data: [100 - dashboardData.infringements.rate, dashboardData.infringements.rate],
-                        backgroundColor: ['#10B981', '#EF4444'],
-                        borderWidth: 0,
-                        cutout: '75%'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.label}: ${context.parsed}%`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    <div class="topbar-sep"></div>
 
-        function initTrafficChart() {
-            const ctx = document.getElementById('trafficChart').getContext('2d');
-            const hours = Array.from({length: 12}, (_, i) => i * 2);
-            const trafficData = hours.map(() => Math.floor(Math.random() * dashboardData.footTraffic / 5) + 10);
-            
-            trafficChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: hours.map(h => `${h}:00`),
-                    datasets: [{
-                        label: 'Foot Traffic',
-                        data: trafficData,
-                        borderColor: '#8B5CF6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#8B5CF6',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: '#F3F4F6'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    <div class="user-area">
+        <div class="user-avatar" id="userAvatar">--</div>
+        <button class="logout-btn" onclick="window.location.href='/auth/logout'">
+            <span style="display:block;width:13px;height:13px;border:1.5px solid currentColor;border-radius:3px;border-right-color:transparent"></span>
+            LOGOUT
+        </button>
+    </div>
+</div>
 
-        async function updateDashboard(hours = 168) {
-            try {
-                const response = await fetch(`/dashboard/api/stats?hours=${hours}`);
-                const data = await response.json();
-                
-                if (parkingChart) {
-                    parkingChart.data.datasets[0].data = [data.parkingUtilization.available, data.parkingUtilization.used];
-                    parkingChart.update();
-                }
-                
-                if (infringementChart) {
-                    infringementChart.data.datasets[0].data = [100 - data.infringements.rate, data.infringements.rate];
-                    infringementChart.update();
-                }
-                
-                const updateElement = (id, value) => {
-                    const element = document.getElementById(id);
-                    if (element) element.textContent = value;
-                };
+<!-- ===== MAIN ===== -->
+<div class="main">
 
-                updateElement('parkingPercentage', `${data.parkingUtilization.percentage || 0}%`);
-                updateElement('occupiedSpots', data.parkingUtilization.used || 0);
-                updateElement('availableSpots', data.parkingUtilization.available || 0);
-                updateElement('totalSpots', data.totalSpots || 0);
-                updateElement('carsStayTime', data.averageStayTime.cars.toFixed(1) || 0);
-                updateElement('peopleCount', data.footTraffic || 0);
-                updateElement('footTrafficCount', data.footTraffic || 0);
-                updateElement('infringementCount', data.infringements.count || 0);
-                updateElement('infringementPercentage', `${data.infringements.rate || 0}%`);
-                updateElement('compliantPercent', `${100 - (data.infringements.rate || 0)}%`);
-                updateElement('violationPercent', `${data.infringements.rate || 0}%`);
-                
-                const carsProgress = document.getElementById('carsProgress');
-                if (carsProgress) {
-                    carsProgress.style.width = `${Math.min(data.averageStayTime.cars * 2, 100)}%`;
-                }
-                
-            } catch (error) {
-                console.error('Error updating dashboard:', error);
-            }
-        }
+    <!-- OVERVIEW VIEW -->
+    <div class="view active" id="view-overview">
 
-        function updateTimeFilter() {
-            const hours = document.getElementById('timeFilter').value;
-            updateDashboard(hours);
-            loadInfractionTable();
-        }
+        <!-- Mobile period strip (hidden on desktop via CSS) -->
+        <div class="mobile-period-strip" id="mobilePeriodStrip">
+            <button class="period-btn" data-period="24">24H</button>
+            <button class="period-btn active" data-period="168">7D</button>
+            <button class="period-btn" data-period="720">30D</button>
+            <button class="period-btn" data-period="8760">1Y</button>
+        </div>
 
-        function logout() {
-            window.location.href = '/auth/logout';
-        }
+        <!-- Sub-bar -->
+        <div class="subbar">
+            <div class="subbar-title">
+                <h2>Operations Overview</h2>
+                <p id="periodLabel">Last 7 days &middot; All properties</p>
+            </div>
+            <div class="topbar-spacer"></div>
+            <div class="violations-pill">
+                <span class="violations-dot"></span>
+                <span class="violations-text"><b id="pendingCount">0</b> unresolved violations</span>
+            </div>
+            <span class="timestamp" id="lastUpdated"></span>
+            <button class="refresh-btn" id="refreshBtn">
+                <span class="refresh-icon"></span> Refresh
+            </button>
+            <button class="export-btn">Export</button>
+        </div>
 
-        function toggleSidebar() {
-            console.log('Sidebar toggle clicked');
-        }
+        <!-- KPI Strip -->
+        <div class="kpi-strip">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Parking Utilization</span>
+                    <span class="kpi-delta" id="kpiParkDelta" style="color:var(--accent)"></span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value" id="kpiParkVal"><%= stats.parkingUtilization.percentage || 0 %></span>
+                    <span class="kpi-unit">%</span>
+                </div>
+                <svg class="kpi-spark" viewBox="0 0 90 26" preserveAspectRatio="none">
+                    <path id="sparkPark" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Avg Stay Time</span>
+                    <span class="kpi-delta" id="kpiStayDelta" style="color:var(--muted)"></span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value" id="kpiStayVal"><%= stats.averageStayTime.cars.toFixed(1) || 0 %></span>
+                    <span class="kpi-unit">min</span>
+                </div>
+                <svg class="kpi-spark" viewBox="0 0 90 26" preserveAspectRatio="none">
+                    <path id="sparkStay" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Foot Traffic</span>
+                    <span class="kpi-delta" id="kpiFootDelta" style="color:var(--accent)"></span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value" id="kpiFootVal"><%= (stats.footTraffic || 0).toLocaleString() %></span>
+                    <span class="kpi-unit">visits</span>
+                </div>
+                <svg class="kpi-spark" viewBox="0 0 90 26" preserveAspectRatio="none">
+                    <path id="sparkFoot" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Violation Rate</span>
+                    <span class="kpi-delta" id="kpiViolDelta" style="color:var(--red)"></span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value" id="kpiViolVal"><%= stats.infringements.rate || 0 %></span>
+                    <span class="kpi-unit">%</span>
+                </div>
+                <svg class="kpi-spark" viewBox="0 0 90 26" preserveAspectRatio="none">
+                    <path id="sparkViol" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+            </div>
+        </div>
 
-        async function loadInfractionTable() {
-            try {
-                const hours = document.getElementById('timeFilter').value;
-                const response = await fetch(`/dashboard/api/infractions?hours=${hours}`);
-                const infractions = await response.json();
-                
-                const tableBody = document.getElementById('infractionsTableBody');
-                const noDataDiv = document.getElementById('noInfractions');
-                const table = document.getElementById('infractionsTable');
-                
-                if (infractions.length === 0) {
-                    table.style.display = 'none';
-                    noDataDiv.style.display = 'block';
-                } else {
-                    table.style.display = 'table';
-                    noDataDiv.style.display = 'none';
-                    
-                    tableBody.innerHTML = infractions.map(infraction => {
-                        const isApproved = infraction.approved === 1;
-                        const rowClass = isApproved ? 'approved-row' : '';
-                        const buttonHtml = isApproved 
-                            ? `<span class="approved-badge">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="m9 12 2 2 4-4"></path>
-                                </svg>
-                                Approved
-                               </span>`
-                            : `<button class="approve-btn" onclick="approveInfraction('${infraction.car_id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="m9 12 2 2 4-4"></path>
-                                </svg>
-                                Approve
-                               </button>`;
-                        
-                        return `
-                        <tr class="${rowClass}">
-                            <td><span class="badge">${infraction.car_id || 'N/A'}</span></td>
-                            <td><strong>${infraction.license_plate || 'N/A'}</strong></td>
-                            <td>${infraction.property_name || 'N/A'}</td>
-                            <td>${infraction.dur_in_minutes || 0}</td>
-                            <td>${infraction.parking_spot || 'N/A'}</td>
-                            <td>${infraction.minutes_parked || 0}</td>
-                            <td><span class="infraction-badge">${infraction.infraction_type || 'N/A'}</span></td>
-                            <td>${new Date(infraction.detection_time).toLocaleString() || 'N/A'}</td>
-                            <td>${buttonHtml}</td>
+        <!-- Main 3-col grid -->
+        <div class="main-grid">
+
+            <!-- Foot Traffic line chart -->
+            <div class="panel-card">
+                <div class="card-head">
+                    <div class="card-title-group">
+                        <span class="card-title">Foot Traffic Analytics</span>
+                        <span class="card-subtitle">Hourly pedestrian detections</span>
+                    </div>
+                    <div class="card-value-right">
+                        <div class="card-big-num" id="trafficTotal"><%= (stats.footTraffic || 0).toLocaleString() %></div>
+                        <div class="card-tiny-label">total visitors</div>
+                    </div>
+                </div>
+                <svg class="traffic-svg" viewBox="0 0 600 170" preserveAspectRatio="none" style="color:var(--accent)">
+                    <defs>
+                        <linearGradient id="ftg" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stop-color="currentColor" stop-opacity="0.22"></stop>
+                            <stop offset="1" stop-color="currentColor" stop-opacity="0"></stop>
+                        </linearGradient>
+                    </defs>
+                    <line x1="0" y1="34"  x2="600" y2="34"  stroke="var(--grid)" stroke-width="1"></line>
+                    <line x1="0" y1="76"  x2="600" y2="76"  stroke="var(--grid)" stroke-width="1"></line>
+                    <line x1="0" y1="118" x2="600" y2="118" stroke="var(--grid)" stroke-width="1"></line>
+                    <line x1="0" y1="152" x2="600" y2="152" stroke="var(--grid)" stroke-width="1"></line>
+                    <path id="trafficArea" fill="url(#ftg)" stroke="none"></path>
+                    <path id="trafficLine" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+                </svg>
+                <div class="traffic-legend">
+                    <div class="legend-items">
+                        <span class="legend-item"><span class="legend-box" style="background:var(--accent)"></span>Detections</span>
+                        <span class="legend-item"><span class="legend-box" style="background:var(--border2)"></span>Baseline</span>
+                    </div>
+                    <span class="legend-peak">Peak <b id="peakHour">—</b></span>
+                </div>
+            </div>
+
+            <!-- Parking ring -->
+            <div class="panel-card">
+                <div class="card-head">
+                    <span class="card-title">Parking Utilization</span>
+                    <span class="badge-pill" style="color:var(--accent2)">
+                        <span class="dot" style="background:var(--accent)"></span>LIVE
+                    </span>
+                </div>
+                <div class="ring-wrapper">
+                    <svg viewBox="0 0 120 120" style="width:150px;height:150px">
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border2)" stroke-width="11"></circle>
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="11"
+                            stroke-linecap="round" id="parkRing"
+                            stroke-dasharray="0 326.7"
+                            transform="rotate(-90 60 60)"></circle>
+                    </svg>
+                    <div class="ring-center">
+                        <div class="ring-big" id="parkPct"><%= stats.parkingUtilization.percentage || 0 %><span style="font-size:16px;color:var(--muted)">%</span></div>
+                        <div class="ring-label">occupied</div>
+                    </div>
+                </div>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Occupied</div>
+                        <div class="mini-stat-val" id="parkOccupied" style="color:var(--accent2)"><%= stats.parkingUtilization.used || 0 %></div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Available</div>
+                        <div class="mini-stat-val" id="parkAvailable"><%= stats.parkingUtilization.available || 0 %></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Infringement ring -->
+            <div class="panel-card">
+                <div class="card-head">
+                    <span class="card-title">Infringement Rate</span>
+                    <span class="badge-pill" style="color:var(--red)">
+                        <span class="dot" style="background:var(--red); animation:erkpulse 1.6s infinite"></span>ALERT
+                    </span>
+                </div>
+                <div class="ring-wrapper">
+                    <svg viewBox="0 0 120 120" style="width:150px;height:150px">
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border2)" stroke-width="11"></circle>
+                        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--red)" stroke-width="11"
+                            stroke-linecap="round" id="infrRing"
+                            stroke-dasharray="0 326.7"
+                            transform="rotate(-90 60 60)"></circle>
+                    </svg>
+                    <div class="ring-center">
+                        <div class="ring-big" id="infrPct" style="color:var(--red)"><%= stats.infringements.rate || 0 %><span style="font-size:16px;opacity:.7">%</span></div>
+                        <div class="ring-label">violations</div>
+                    </div>
+                </div>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Compliant</div>
+                        <div class="mini-stat-val" id="infrCompliant" style="color:var(--accent2)"><%= 100 - (stats.infringements.rate || 0) %>%</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Flagged</div>
+                        <div class="mini-stat-val" id="infrActive" style="color:var(--red)"><%= stats.infringements.count || 0 %></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Infraction table -->
+        <div class="table-card">
+            <div class="table-topbar">
+                <span class="table-title">Recent Infractions</span>
+                <span class="pending-chip" id="pendingChip">0 pending</span>
+                <div class="topbar-spacer"></div>
+                <div class="search-box">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search plate, property, ID…">
+                </div>
+            </div>
+            <div class="filter-row" id="filterRow"></div>
+            <div class="table-wrap">
+                <table class="infrac-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="car_id">Car ID <span class="sort-arrow" id="scar_id"></span></th>
+                            <th data-sort="license_plate">Plate <span class="sort-arrow" id="slicense_plate"></span></th>
+                            <th data-sort="property_name">Property <span class="sort-arrow" id="sproperty_name"></span></th>
+                            <th data-sort="parking_spot">Spot <span class="sort-arrow" id="sparking_spot"></span></th>
+                            <th data-sort="minutes_parked" style="text-align:right">Over (min) <span class="sort-arrow" id="sminutes_parked"></span></th>
+                            <th data-sort="infraction_type">Type <span class="sort-arrow" id="sinfraction_type"></span></th>
+                            <th data-sort="detection_time">Detected <span class="sort-arrow" id="sdetection_time"></span></th>
+                            <th data-sort="approved">Action <span class="sort-arrow" id="sapproved"></span></th>
                         </tr>
-                        `;
-                    }).join('');
-                }
-            } catch (error) {
-                console.error('Error loading infraction table:', error);
-            }
-        }
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div class="empty-state" id="emptyState" style="display:none">
+                    <div class="empty-ring">&#10003;</div>
+                    <div class="empty-title">No matching infractions</div>
+                    <div class="empty-sub">Adjust your search or filters</div>
+                </div>
+            </div>
+        </div>
 
-        async function approveInfraction(carId) {
-            try {
-                const response = await fetch('/dashboard/api/approve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ car_id: carId })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    loadInfractionTable();
-                    updateDashboard(document.getElementById('timeFilter').value);
-                } else {
-                    alert('Failed to approve infraction: ' + (result.message || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error approving infraction:', error);
-                alert('Error approving infraction');
-            }
-        }
+        <!-- Infraction Detail Modal -->
+        <div class="modal-overlay" id="infractionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-title">Infraction Details</span>
+                    <button class="modal-close" id="modalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Car ID</span>
+                            <span class="detail-value" id="modalCarId">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">License Plate</span>
+                            <span class="detail-value" id="modalPlate">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Property</span>
+                            <span class="detail-value" id="modalProperty">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Parking Spot</span>
+                            <span class="detail-value" id="modalSpot">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Minutes Over</span>
+                            <span class="detail-value" id="modalMinutes">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Infraction Type</span>
+                            <span class="detail-value" id="modalType">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Detected</span>
+                            <span class="detail-value" id="modalDetected">—</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value" id="modalStatus">—</span>
+                        </div>
+                    </div>
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="video-placeholder-icon">▶</div>
+                            <span>Infraction video playback</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        document.addEventListener('DOMContentLoaded', function() {
-            initParkingChart();
-            initInfringementChart();
-            initTrafficChart();
-            loadInfractionTable();
-            
-            document.getElementById('refreshTable').addEventListener('click', () => {
-                loadInfractionTable();
-                updateDashboard(document.getElementById('timeFilter').value);
-            });
-            
-            setInterval(() => {
-                const currentHours = document.getElementById('timeFilter').value;
-                updateDashboard(currentHours);
-                loadInfractionTable();
-            }, 30000);
+        <div class="dash-footer">ERKOS Security Dashboard &copy; 2026 &middot; All detections AI-verified</div>
+    </div>
+
+    <!-- COMPONENTS VIEW -->
+    <div class="view" id="view-components">
+        <div>
+            <h2 style="margin:0 0 4px;font-size:17px;font-weight:700">Component Variations</h2>
+            <p style="margin:0;font-size:11.5px;color:var(--muted)">Alternate treatments — pick and mix into the overview. Live data, current period.</p>
+        </div>
+
+        <!-- Parking utilization treatments -->
+        <div class="comp-section">
+            <span class="comp-section-label">Parking Utilization — 3 treatments</span>
+            <div class="comp-row">
+
+                <!-- A: Radial -->
+                <div class="comp-variant">
+                    <span class="comp-variant-label">A · RADIAL</span>
+                    <div class="panel-card" style="width:240px;align-items:center">
+                        <span class="card-title" style="align-self:flex-start">Utilization</span>
+                        <div class="ring-wrapper" style="margin:4px 0;min-height:auto">
+                            <svg viewBox="0 0 120 120" style="width:130px;height:130px">
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border2)" stroke-width="11"></circle>
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="11"
+                                    stroke-linecap="round" id="compParkRing"
+                                    stroke-dasharray="0 326.7"
+                                    transform="rotate(-90 60 60)"></circle>
+                            </svg>
+                            <div class="ring-center">
+                                <span style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600" id="compParkPct">0%</span>
+                            </div>
+                        </div>
+                        <span style="font-size:11px;color:var(--muted)" id="compParkSub">0 / 0 spots</span>
+                    </div>
+                </div>
+
+                <!-- B: Linear bar -->
+                <div class="comp-variant">
+                    <span class="comp-variant-label">B · LINEAR</span>
+                    <div class="panel-card" style="width:300px">
+                        <div style="display:flex;align-items:flex-end;justify-content:space-between">
+                            <span class="card-title">Utilization</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;line-height:1" id="compLinearPct">0<span style="font-size:15px;color:var(--muted)">%</span></span>
+                        </div>
+                        <div style="height:14px;border-radius:7px;background:var(--panel2);border:1px solid var(--border);overflow:hidden;display:flex">
+                            <div id="compBar" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+                            <span><b id="compOccupied" style="color:var(--accent2);font-family:'IBM Plex Mono',monospace">0</b> occupied</span>
+                            <span><b id="compAvailable" style="font-family:'IBM Plex Mono',monospace">0</b> open</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- C: Grid -->
+                <div class="comp-variant">
+                    <span class="comp-variant-label">C · OCCUPANCY GRID</span>
+                    <div class="panel-card" style="width:280px">
+                        <div style="display:flex;align-items:center;justify-content:space-between">
+                            <span class="card-title">Occupancy Map</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent2);font-weight:600" id="compGridPct">0%</span>
+                        </div>
+                        <div id="occupancyGrid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px"></div>
+                        <div style="display:flex;gap:14px;font-size:10.5px;color:var(--muted)">
+                            <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:var(--accent)"></span>Occupied</span>
+                            <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:var(--border2)"></span>Open</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI treatments -->
+        <div class="comp-section">
+            <span class="comp-section-label">KPI Tile — 2 treatments</span>
+            <div class="comp-row">
+                <div class="comp-variant">
+                    <span class="comp-variant-label">A · SPARKLINE</span>
+                    <div class="panel-card" style="width:230px">
+                        <div style="display:flex;justify-content:space-between">
+                            <span class="kpi-label">Foot Traffic</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);font-weight:600">&#9650;4.3%</span>
+                        </div>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600" id="compFootA">0</span>
+                        <svg viewBox="0 0 90 26" preserveAspectRatio="none" style="width:100%;height:24px">
+                            <path id="compSparkA" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="comp-variant">
+                    <span class="comp-variant-label">B · ACCENT BAR</span>
+                    <div class="panel-card" style="width:230px;border-left:3px solid var(--accent)">
+                        <span class="kpi-label">Foot Traffic</span>
+                        <div style="display:flex;align-items:flex-end;gap:6px">
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600" id="compFootB">0</span>
+                            <span style="font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:600">&#9650; 4.3%</span>
+                        </div>
+                        <span style="font-size:11px;color:var(--muted)">vs previous period</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-footer">ERKOS Security Dashboard &copy; 2026 &middot; All detections AI-verified</div>
+    </div>
+</div>
+
+<script>
+    // ===== Initial data from server =====
+    let data = {
+        parkingUtilization: {
+            used: <%= stats.parkingUtilization.used || 0 %>,
+            available: <%= stats.parkingUtilization.available || 0 %>,
+            percentage: <%= stats.parkingUtilization.percentage || 0 %>
+        },
+        averageStayTime: { cars: <%= stats.averageStayTime.cars || 0 %> },
+        footTraffic: <%= stats.footTraffic || 0 %>,
+        infringements: {
+            count: <%= stats.infringements.count || 0 %>,
+            rate: <%= stats.infringements.rate || 0 %>
+        },
+        totalSpots: <%= stats.totalSpots || 0 %>
+    };
+
+    const clientName = '<%= clientName || "User" %>';
+    const CIRC = 2 * Math.PI * 52; // 326.7
+
+    // ===== Theme =====
+    const html = document.documentElement;
+    const saved = localStorage.getItem('erkos-theme') || 'dark';
+    html.setAttribute('data-theme', saved);
+    const themeBtn = document.getElementById('themeToggle');
+    themeBtn.textContent = saved === 'dark' ? '☀' : '☾';
+    themeBtn.addEventListener('click', () => {
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('erkos-theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀' : '☾';
+    });
+
+    // ===== User avatar initials =====
+    const initials = clientName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || '--';
+    document.getElementById('userAvatar').textContent = initials;
+
+    // ===== Tabs =====
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('view-' + btn.dataset.tab).classList.add('active');
         });
-    </script>
+    });
+
+    // ===== Period selector =====
+    let currentPeriod = 168;
+    const PERIOD_LABELS = { 24:'Last 24 hours', 168:'Last 7 days', 720:'Last 30 days', 8760:'Last 12 months' };
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = parseInt(btn.dataset.period);
+            document.getElementById('periodLabel').textContent = PERIOD_LABELS[currentPeriod] + ' · All properties';
+            refreshAll();
+        });
+    });
+
+    // ===== SVG helpers =====
+    function sparkPath(arr) {
+        if (!arr || arr.length < 2) return '';
+        const W=90, H=26, p=3, mn=Math.min(...arr), mx=Math.max(...arr), rg=(mx-mn)||1;
+        return arr.map((v,i) => {
+            const x = p + i/(arr.length-1)*(W-2*p);
+            const y = H - p - ((v-mn)/rg)*(H-2*p);
+            return (i?'L':'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+        }).join(' ');
+    }
+
+    function trafficPaths(shape) {
+        const n=shape.length, W=600, H=170, pl=4, pr=4, pt=16, pb=18;
+        const mx = Math.max(...shape);
+        const pts = shape.map((v,i) => [pl+i/(n-1)*(W-pl-pr), H-pb-(v/mx)*(H-pt-pb)]);
+        const line = pts.map((q,i) => (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+        const area = line + ' L '+(W-pr).toFixed(1)+' '+(H-pb).toFixed(1)+' L '+pl.toFixed(1)+' '+(H-pb).toFixed(1)+' Z';
+        return { line, area };
+    }
+
+    function ringDash(pct) {
+        const arc = (CIRC * Math.min(pct, 100) / 100).toFixed(1);
+        return arc + ' ' + CIRC.toFixed(1);
+    }
+
+    // ===== Update DOM from data =====
+    function updateDOMFromData(d) {
+        // KPIs
+        document.getElementById('kpiParkVal').textContent  = d.parkingUtilization.percentage || 0;
+        document.getElementById('kpiStayVal').textContent  = (d.averageStayTime.cars || 0).toFixed(1);
+        document.getElementById('kpiFootVal').textContent  = (d.footTraffic || 0).toLocaleString();
+        document.getElementById('kpiViolVal').textContent  = (d.infringements.rate || 0).toFixed(1);
+
+        // Rings
+        const parkPct  = d.parkingUtilization.percentage || 0;
+        const infrPct  = d.infringements.rate || 0;
+        document.getElementById('parkRing').setAttribute('stroke-dasharray', ringDash(parkPct));
+        document.getElementById('infrRing').setAttribute('stroke-dasharray', ringDash(infrPct));
+        document.getElementById('parkPct').innerHTML = parkPct + '<span style="font-size:16px;color:var(--muted)">%</span>';
+        document.getElementById('infrPct').innerHTML = infrPct.toFixed(1) + '<span style="font-size:16px;opacity:.7">%</span>';
+        document.getElementById('parkOccupied').textContent  = d.parkingUtilization.used || 0;
+        document.getElementById('parkAvailable').textContent = d.parkingUtilization.available || 0;
+        document.getElementById('infrCompliant').textContent = (100 - infrPct).toFixed(1) + '%';
+        document.getElementById('infrActive').textContent    = d.infringements.count || 0;
+
+        // Traffic total
+        document.getElementById('trafficTotal').textContent = (d.footTraffic || 0).toLocaleString();
+
+        // Traffic chart updated separately via loadTraffic()
+
+        // Sparklines (using rolling-week shape seeds)
+        const SPARKS = {
+            park: [62,64,61,66,70,68,72,69,74,71,76,parkPct],
+            stay: [55,53,54,52,50,51,49,52,53,51,52,d.averageStayTime.cars||0],
+            foot: [30,42,38,55,60,52,68,74,70,82,88,d.footTraffic > 0 ? 91 : 0],
+            viol: [7,6.5,6.8,6,5.5,5.8,5.2,4.9,5.1,4.7,4.8,infrPct]
+        };
+        document.getElementById('sparkPark').setAttribute('d', sparkPath(SPARKS.park));
+        document.getElementById('sparkStay').setAttribute('d', sparkPath(SPARKS.stay));
+        document.getElementById('sparkFoot').setAttribute('d', sparkPath(SPARKS.foot));
+        document.getElementById('sparkViol').setAttribute('d', sparkPath(SPARKS.viol));
+
+        // Components view
+        document.getElementById('compParkRing').setAttribute('stroke-dasharray', ringDash(parkPct));
+        document.getElementById('compParkPct').textContent = parkPct + '%';
+        document.getElementById('compParkSub').textContent = (d.parkingUtilization.used||0) + ' / ' + ((d.totalSpots)||0) + ' spots';
+        document.getElementById('compLinearPct').innerHTML = parkPct + '<span style="font-size:15px;color:var(--muted)">%</span>';
+        document.getElementById('compBar').style.width = parkPct + '%';
+        document.getElementById('compOccupied').textContent  = d.parkingUtilization.used || 0;
+        document.getElementById('compAvailable').textContent = d.parkingUtilization.available || 0;
+        document.getElementById('compGridPct').textContent = parkPct + '%';
+        const grid = document.getElementById('occupancyGrid');
+        const lit  = Math.round(parkPct / 100 * 24);
+        grid.innerHTML = Array.from({length:24},(_,i) =>
+            `<div style="aspect-ratio:1;border-radius:3px;background:${i<lit?'var(--accent)':'var(--border2)'}"></div>`
+        ).join('');
+        document.getElementById('compFootA').textContent = (d.footTraffic||0).toLocaleString();
+        document.getElementById('compFootB').textContent = (d.footTraffic||0).toLocaleString();
+        document.getElementById('compSparkA').setAttribute('d', sparkPath(SPARKS.foot));
+
+        // Timestamp
+        const now = new Date();
+        document.getElementById('lastUpdated').textContent =
+            'UPD ' + String(now.getHours()).padStart(2,'0') + ':' +
+            String(now.getMinutes()).padStart(2,'0') + ':' +
+            String(now.getSeconds()).padStart(2,'0');
+    }
+
+    // ===== Table state =====
+    let allInfractions = [];
+    let activeFilter  = 'All';
+    let searchQuery   = '';
+    let sortKey       = 'detection_time';
+    let sortDir       = 'desc';
+
+    const TYPE_COLORS = {
+        'Fire Lane':     'var(--red)',
+        'Handicap Zone': 'var(--red)',
+        'Overstay':      'var(--amber)',
+        'Loading Zone':  'var(--amber)',
+    };
+    function typeColor(t) { return TYPE_COLORS[t] || 'var(--muted)'; }
+
+    const FILTER_TYPES = ['All','Overstay','No Permit','Fire Lane','Handicap Zone','Loading Zone','Double Park'];
+
+    function buildFilters() {
+        const row = document.getElementById('filterRow');
+        row.innerHTML = FILTER_TYPES.map(t =>
+            `<button class="filter-chip${t===activeFilter?' active':''}" data-type="${t}">${t}</button>`
+        ).join('');
+        row.querySelectorAll('.filter-chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeFilter = btn.dataset.type;
+                buildFilters();
+                renderTable();
+            });
+        });
+    }
+
+    function renderTable() {
+        let list = [...allInfractions];
+
+        if (activeFilter !== 'All')
+            list = list.filter(r => r.infraction_type === activeFilter);
+
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter(r =>
+                (r.car_id||'').toLowerCase().includes(q) ||
+                (r.license_plate||'').toLowerCase().includes(q) ||
+                (r.property_name||'').toLowerCase().includes(q) ||
+                (r.infraction_type||'').toLowerCase().includes(q)
+            );
+        }
+
+        // Sort
+        list.sort((a, b) => {
+            let x = a[sortKey], y = b[sortKey];
+            if (sortKey === 'minutes_parked') { x = parseFloat(x)||0; y = parseFloat(y)||0; }
+            let c = typeof x === 'number' ? x - y : String(x||'').localeCompare(String(y||''));
+            return sortDir === 'asc' ? c : -c;
+        });
+
+        const tbody = document.getElementById('tableBody');
+        const empty = document.getElementById('emptyState');
+        const pending = list.filter(r => !r.approved).length;
+        document.getElementById('pendingCount').textContent = pending;
+        document.getElementById('pendingChip').textContent = pending + ' pending';
+
+        if (list.length === 0) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        tbody.innerHTML = list.map(r => {
+            const det = r.detection_time ? new Date(r.detection_time).toLocaleString() : '—';
+            const col = typeColor(r.infraction_type);
+            const action = r.approved
+                ? `<span class="cleared-badge"><span class="cleared-check">&#10003;</span>Cleared</span>`
+                : `<button class="approve-btn" onclick="event.stopPropagation(); approveRow('${r.car_id}')">Approve</button>`;
+            return `
+            <tr style="${r.approved?'opacity:.6':''}" onclick="openInfractionModal(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+                <td class="td-mono td-muted">${r.car_id||'—'}</td>
+                <td class="td-plate">${r.license_plate||'—'}</td>
+                <td>${r.property_name||'—'}</td>
+                <td class="td-mono td-muted">${r.parking_spot||'—'}</td>
+                <td class="td-mono td-right">${r.minutes_parked||0}</td>
+                <td><span style="display:inline-flex;align-items:center;gap:6px"><span class="type-dot" style="background:${col}"></span>${r.infraction_type||'—'}</span></td>
+                <td class="td-mono td-muted">${det}</td>
+                <td>${action}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Sort headers
+    document.querySelectorAll('.infrac-table th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const k = th.dataset.sort;
+            if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            else { sortKey = k; sortDir = 'desc'; }
+            document.querySelectorAll('.sort-arrow').forEach(s => s.textContent = '');
+            document.getElementById('s' + k).textContent = sortDir === 'asc' ? '▲' : '▼';
+            renderTable();
+        });
+    });
+
+    // Search
+    document.getElementById('searchInput').addEventListener('input', e => {
+        searchQuery = e.target.value;
+        renderTable();
+    });
+
+    // ===== API calls =====
+    async function loadStats() {
+        try {
+            const res = await fetch(`/dashboard/api/stats?hours=${currentPeriod}`);
+            data = await res.json();
+            updateDOMFromData(data);
+        } catch(e) { console.error('Stats error:', e); }
+    }
+
+    async function loadTraffic() {
+        try {
+            const res = await fetch(`/dashboard/api/traffic?hours=${currentPeriod}`);
+            const buckets = await res.json();
+            if (!buckets || buckets.length === 0) return;
+
+            const peakIdx = buckets.indexOf(Math.max(...buckets));
+            const bucketHours = currentPeriod / buckets.length;
+            const peakHoursAgo = (buckets.length - 1 - peakIdx) * bucketHours;
+            const peakTime = new Date(Date.now() - peakHoursAgo * 3600000);
+            document.getElementById('peakHour').textContent =
+                String(peakTime.getHours()).padStart(2,'0') + ':00';
+
+            const paths = trafficPaths(buckets);
+            document.getElementById('trafficLine').setAttribute('d', paths.line);
+            document.getElementById('trafficArea').setAttribute('d', paths.area);
+
+            // Also update foot sparkline with real shape
+            document.getElementById('sparkFoot').setAttribute('d', sparkPath(buckets));
+            document.getElementById('compSparkA').setAttribute('d', sparkPath(buckets));
+        } catch(e) { console.error('Traffic error:', e); }
+    }
+
+    async function loadInfractions() {
+        try {
+            const res = await fetch(`/dashboard/api/infractions?hours=${currentPeriod}`);
+            allInfractions = await res.json();
+            renderTable();
+        } catch(e) { console.error('Infractions error:', e); }
+    }
+
+    async function approveRow(carId) {
+        try {
+            const res = await fetch('/dashboard/api/approve', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({car_id: carId})
+            });
+            const result = await res.json();
+            if (result.success) {
+                await loadInfractions();
+                await loadStats();
+            } else {
+                alert('Failed to approve: ' + (result.message || 'Unknown error'));
+            }
+        } catch(e) {
+            console.error('Approve error:', e);
+        }
+    }
+
+    function openInfractionModal(infraction) {
+        document.getElementById('modalCarId').textContent = infraction.car_id || '—';
+        document.getElementById('modalPlate').textContent = infraction.license_plate || '—';
+        document.getElementById('modalProperty').textContent = infraction.property_name || '—';
+        document.getElementById('modalSpot').textContent = infraction.parking_spot || '—';
+        document.getElementById('modalMinutes').textContent = infraction.minutes_parked || '0';
+        document.getElementById('modalType').textContent = infraction.infraction_type || '—';
+        document.getElementById('modalDetected').textContent = infraction.detection_time ? new Date(infraction.detection_time).toLocaleString() : '—';
+        document.getElementById('modalStatus').textContent = infraction.approved ? 'Cleared' : 'Pending';
+        document.getElementById('infractionModal').classList.add('active');
+    }
+
+    function closeInfractionModal() {
+        document.getElementById('infractionModal').classList.remove('active');
+    }
+
+    document.getElementById('modalClose').addEventListener('click', closeInfractionModal);
+    document.getElementById('infractionModal').addEventListener('click', (e) => {
+        if (e.target.id === 'infractionModal') closeInfractionModal();
+    });
+
+    async function refreshAll() {
+        await Promise.all([loadStats(), loadInfractions(), loadTraffic()]);
+    }
+
+    // ===== Init =====
+    // ===== Sidebar =====
+    const sidebar        = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        sidebarOverlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    document.querySelector('.menu-btn').addEventListener('click', openSidebar);
+    document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // Sidebar tab switching
+    document.querySelectorAll('[data-sidebar-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.sidebarTab;
+            document.querySelectorAll('[data-sidebar-tab]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // sync desktop tabs
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById('view-' + tab).classList.add('active');
+            // sync mobile bottom nav
+            document.querySelectorAll('.mobile-nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
+            const mobileBtn = document.querySelector(`.mobile-nav-btn[data-tab="${tab}"]`);
+            if (mobileBtn) mobileBtn.classList.add('active');
+            closeSidebar();
+        });
+    });
+
+    // Sidebar period selection
+    document.querySelectorAll('.sidebar-period').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.sidebar-period').forEach(b => b.classList.remove('active-period'));
+            btn.classList.add('active-period');
+            currentPeriod = parseInt(btn.dataset.period);
+            // sync all period selectors
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.toggle('active', parseInt(b.dataset.period) === currentPeriod);
+            });
+            document.getElementById('periodLabel').textContent = PERIOD_LABELS[currentPeriod] + ' · All properties';
+            closeSidebar();
+            refreshAll();
+        });
+    });
+
+    document.getElementById('sidebarRefresh').addEventListener('click', () => { closeSidebar(); refreshAll(); });
+    document.getElementById('sidebarTheme').addEventListener('click', () => {
+        themeBtn.click();
+        document.getElementById('sidebarThemeIcon').textContent =
+            html.getAttribute('data-theme') === 'dark' ? '☀' : '☾';
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDOMFromData(data);
+        buildFilters();
+        loadInfractions();
+
+        loadTraffic();
+        document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+        document.getElementById('refreshMobileBtn').addEventListener('click', refreshAll);
+
+        // Auto-refresh every 30s
+        setInterval(refreshAll, 30000);
+
+        // Set initial sort arrow
+        document.getElementById('s' + sortKey).textContent = '▼';
+
+        // ===== Mobile nav tab switching =====
+        document.querySelectorAll('.mobile-nav-btn[data-tab]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // sync with desktop tabs
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+                const tab = btn.dataset.tab;
+                document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+                document.getElementById('view-' + tab).classList.add('active');
+                btn.classList.add('active');
+            });
+        });
+
+        // ===== Mobile period strip (mirrors desktop period bar) =====
+        document.querySelectorAll('#mobilePeriodStrip .period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#mobilePeriodStrip .period-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#periodBar .period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const match = document.querySelector(`#periodBar .period-btn[data-period="${btn.dataset.period}"]`);
+                if (match) match.classList.add('active');
+                currentPeriod = parseInt(btn.dataset.period);
+                document.getElementById('periodLabel').textContent = PERIOD_LABELS[currentPeriod] + ' · All properties';
+                refreshAll();
+            });
+        });
+
+        // Keep both period selectors in sync when desktop one is used
+        document.querySelectorAll('#periodBar .period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#mobilePeriodStrip .period-btn').forEach(b => b.classList.remove('active'));
+                const match = document.querySelector(`#mobilePeriodStrip .period-btn[data-period="${btn.dataset.period}"]`);
+                if (match) match.classList.add('active');
+            });
+        });
+
+        // Mobile theme toggle
+        document.getElementById('mobileThemeBtn').addEventListener('click', () => {
+            themeBtn.click();
+            document.getElementById('mobileThemeBtn').querySelector('.mobile-nav-icon').textContent =
+                html.getAttribute('data-theme') === 'dark' ? '☀' : '☾';
+        });
+
+    });
+
+</script>
+
+<!-- ===== MOBILE BOTTOM NAV ===== -->
+<nav class="mobile-nav" role="navigation" aria-label="Main navigation">
+    <button class="mobile-nav-btn active" data-tab="overview">
+        <span class="mobile-nav-icon">&#9783;</span>
+        OVERVIEW
+    </button>
+    <button class="mobile-nav-btn" id="refreshMobileBtn">
+        <span class="mobile-nav-icon">&#8635;</span>
+        REFRESH
+    </button>
+    <button class="mobile-nav-btn" id="mobileThemeBtn">
+        <span class="mobile-nav-icon">☀</span>
+        THEME
+    </button>
+    <button class="mobile-nav-btn" onclick="window.location.href='/auth/logout'">
+        <span class="mobile-nav-icon">&#8594;</span>
+        LOGOUT
+    </button>
+</nav>
 </body>
 </html>

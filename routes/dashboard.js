@@ -61,6 +61,54 @@ router.get('/api/stats', requireAuth, async (req, res) => {
     }
 });
 
+router.get('/api/traffic', requireAuth, async (req, res) => {
+    try {
+        const email = req.session.clientEmail;
+        const pastHours = parseInt(req.query.hours) || 168;
+
+        const [locationRows] = await db.execute(
+            'SELECT location_id FROM locations WHERE client_email = ?', [email]
+        );
+        if (locationRows.length === 0) return res.json([]);
+
+        const locationIds = locationRows.map(r => r.location_id);
+        const [cameraRows] = await db.execute(
+            `SELECT camera_id FROM camera WHERE location_id IN (${locationIds.map(() => '?').join(',')})`,
+            locationIds
+        );
+        if (cameraRows.length === 0) return res.json([]);
+
+        const cameraIds = cameraRows.map(r => r.camera_id);
+
+        // Bucket detections by hour slot (up to 24 buckets)
+        const buckets = Math.min(pastHours, 24);
+        const bucketSize = pastHours / buckets; // hours per bucket
+
+        const [rows] = await db.execute(`
+            SELECT
+                FLOOR((UNIX_TIMESTAMP() - timestamp_first_detected) / (3600 * ?)) AS bucket,
+                COUNT(DISTINCT person_id) AS count
+            FROM ppl_detections
+            WHERE camera_id IN (${cameraIds.map(() => '?').join(',')})
+              AND timestamp_first_detected > UNIX_TIMESTAMP() - 3600 * ?
+            GROUP BY bucket
+            ORDER BY bucket DESC
+        `, [bucketSize, ...cameraIds, pastHours]);
+
+        // Build ordered array oldest→newest, length = buckets
+        const result = Array(buckets).fill(0);
+        rows.forEach(r => {
+            const idx = buckets - 1 - r.bucket;
+            if (idx >= 0 && idx < buckets) result[idx] = r.count;
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error('Traffic hourly error:', error);
+        res.json([]);
+    }
+});
+
 router.get('/api/infractions', requireAuth, async (req, res) => {
     try {
         const email = req.session.clientEmail;

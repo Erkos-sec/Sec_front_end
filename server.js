@@ -23,11 +23,13 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-const authRoutes = require('./routes/auth');
+const authRoutes      = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
+const cameraRoutes    = require('./routes/cameras');
 
-app.use('/auth', authRoutes);
+app.use('/auth',      authRoutes);
 app.use('/dashboard', dashboardRoutes);
+app.use('/cameras',   cameraRoutes);
 
 app.get('/', (req, res) => {
     if (req.session.clientEmail) {

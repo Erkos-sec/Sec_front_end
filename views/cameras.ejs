@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERKOS Security - Camera Feeds</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --bg: #0a0d12; --panel: #11151c; --panel2: #161b23;
+            --border: #1e242d; --border2: #2b333f;
+            --text: #e6ebf2; --muted: #8a94a3; --faint: #5a6472;
+            --accent: #10b981; --accent2: #34d399;
+            --red: #f0556a; --amber: #f5a524; --grid: #1a1f27;
+        }
+        [data-theme="light"] {
+            --bg: #eef0f3; --panel: #ffffff; --panel2: #f7f9fb;
+            --border: #e3e6ea; --border2: #d3d8df;
+            --text: #10151c; --muted: #5b6472; --faint: #98a1b0;
+            --accent: #059669; --accent2: #10b981;
+            --red: #e23744; --amber: #d97706; --grid: #eceef1;
+        }
+
+        @keyframes erkpulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+        @keyframes erkscanline { 0%{transform:translateY(-40px)} 100%{transform:translateY(160px)} }
+
+        ::-webkit-scrollbar { height:9px; width:9px; }
+        ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:6px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+
+        body {
+            margin:0; background:var(--bg); color:var(--text);
+            font-family:'IBM Plex Sans',system-ui,sans-serif;
+            font-size:13px; line-height:1.4; -webkit-font-smoothing:antialiased;
+        }
+        button { font-family:inherit; }
+
+        /* ── Topbar ─────────────────────────────────────────────────────── */
+        .topbar {
+            display:flex; align-items:center; gap:18px;
+            height:54px; padding:0 16px;
+            border-bottom:1px solid var(--border);
+            background:var(--panel);
+            position:sticky; top:0; z-index:30;
+        }
+        .topbar-left { display:flex; align-items:center; gap:11px; }
+        .erkos-logo  { display:flex; align-items:center; gap:9px; text-decoration:none; color:inherit; }
+        .erkos-icon img { width:36px; height:36px; object-fit:contain; display:block; }
+        [data-theme="dark"] .erkos-icon img { filter: brightness(0) invert(1); }
+        .erkos-wordmark { display:flex; flex-direction:column; line-height:1.05; }
+        .erkos-name { font-weight:700; letter-spacing:.14em; font-size:14px; }
+        .erkos-sub  { font-size:8.5px; letter-spacing:.22em; color:var(--faint); font-weight:600; }
+        .back-btn {
+            display:flex; align-items:center; gap:7px;
+            padding:6px 12px; border:1px solid var(--border); border-radius:7px;
+            background:transparent; color:var(--muted); font-size:12px; cursor:pointer;
+            text-decoration:none; transition:color .12s, border-color .12s;
+        }
+        .back-btn:hover { color:var(--text); border-color:var(--border2); }
+        .topbar-spacer { flex:1; }
+        .theme-btn {
+            width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+            background:transparent; border:1px solid var(--border); border-radius:7px;
+            cursor:pointer; font-size:15px; color:var(--muted);
+        }
+        .user-area   { display:flex; align-items:center; gap:10px; }
+        .user-avatar {
+            width:30px; height:30px; border-radius:50%;
+            background:var(--panel2); border:1px solid var(--border2);
+            display:flex; align-items:center; justify-content:center;
+            font-size:11px; font-weight:700; letter-spacing:.05em; color:var(--muted);
+        }
+        .logout-btn {
+            display:flex; align-items:center; gap:7px;
+            padding:5px 11px; background:transparent;
+            border:1px solid var(--border); border-radius:7px;
+            font-size:10.5px; letter-spacing:.07em; font-weight:600;
+            color:var(--muted); cursor:pointer; transition:color .12s;
+        }
+        .logout-btn:hover { color:var(--text); }
+
+        /* ── Main layout ─────────────────────────────────────────────────── */
+        .main {
+            padding:20px 20px 40px;
+            display:flex; flex-direction:column; gap:14px;
+            max-width:1600px; margin:0 auto;
+        }
+
+        /* ── Header row ──────────────────────────────────────────────────── */
+        .cam-header  { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+        .cam-title   { display:flex; flex-direction:column; gap:2px; }
+        .cam-title h1 { margin:0; font-size:17px; font-weight:700; letter-spacing:-.01em; }
+        .cam-title p  { margin:0; font-size:11px; color:var(--muted); }
+
+        .location-pill {
+            display:flex; align-items:center; gap:9px;
+            padding:8px 12px; background:var(--panel); border:1px solid var(--border); border-radius:8px;
+        }
+        .location-label {
+            font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+            color:var(--faint); font-weight:600;
+        }
+        .location-select {
+            background:transparent; border:none; outline:none;
+            color:var(--text); font-family:'IBM Plex Mono',monospace;
+            font-size:12.5px; font-weight:600; cursor:pointer;
+        }
+        .location-select option { background:var(--panel); color:var(--text); }
+
+        .status-pill {
+            display:flex; align-items:center; gap:7px;
+            padding:6px 12px; border-radius:999px; font-size:11px; font-weight:600;
+        }
+        .status-pill.ok    { background:var(--panel); border:1px solid var(--border); color:var(--muted); }
+        .status-pill.alert {
+            background:color-mix(in srgb,var(--red) 14%,transparent);
+            border:1px solid color-mix(in srgb,var(--red) 40%,transparent);
+            color:var(--red);
+        }
+        .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        .status-dot.live { background:var(--accent); animation:erkpulse 1.6s ease-in-out infinite alternate; }
+        .status-dot.down { background:var(--red); }
+
+        /* ── Down alert banner ───────────────────────────────────────────── */
+        .cam-alert {
+            display:flex; align-items:flex-start; gap:11px;
+            padding:12px 14px;
+            background:color-mix(in srgb,var(--red) 9%,var(--panel));
+            border:1px solid color-mix(in srgb,var(--red) 35%,transparent);
+            border-radius:9px;
+        }
+        .cam-alert-icon {
+            flex-shrink:0; width:20px; height:20px; border-radius:50%;
+            border:1.5px solid var(--red); color:var(--red);
+            display:flex; align-items:center; justify-content:center;
+            font-weight:700; font-size:12px; margin-top:1px;
+        }
+        .cam-alert-body  { display:flex; flex-direction:column; gap:6px; flex:1; }
+        .cam-alert-title { font-size:12.5px; font-weight:600; color:var(--red); }
+        .cam-alert-chips { display:flex; flex-wrap:wrap; gap:8px; }
+        .cam-alert-chip  {
+            padding:4px 10px; border-radius:6px;
+            background:var(--panel); border:1px solid var(--border);
+            font-size:11px; color:var(--text);
+        }
+
+        /* ── Section headers ─────────────────────────────────────────────── */
+        .cam-section { display:flex; flex-direction:column; gap:10px; }
+        .cam-section-head { display:flex; align-items:center; gap:9px; }
+        .cam-section-label {
+            font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+            color:var(--faint); font-weight:600; font-family:'IBM Plex Mono',monospace;
+            white-space:nowrap;
+        }
+        .cam-section-rule { flex:1; height:1px; background:var(--border); }
+
+        /* ── Camera grid ─────────────────────────────────────────────────── */
+        .cam-grid {
+            display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+        }
+        .cam-tile {
+            cursor:pointer; background:var(--panel); border:1px solid var(--border);
+            border-radius:9px; overflow:hidden; display:flex; flex-direction:column;
+            transition:border-color .15s;
+        }
+        .cam-tile:hover:not(.cam-tile-down) { border-color:var(--accent2); }
+        .cam-tile-down { border-color:var(--red) !important; }
+
+        .cam-media { position:relative; aspect-ratio:16/10; overflow:hidden; }
+        .bg-live { background:repeating-linear-gradient(135deg,var(--panel2) 0,var(--panel2) 10px,var(--bg) 10px,var(--bg) 20px); }
+        .bg-down { background:repeating-linear-gradient(135deg,var(--panel2) 0,var(--panel2) 8px, var(--bg) 8px,var(--bg) 16px); }
+
+        .ov-tl {
+            position:absolute; top:8px; left:8px;
+            display:flex; align-items:center; gap:5px;
+            padding:3px 7px; border-radius:5px; background:rgba(0,0,0,.55);
+        }
+        .ov-tr {
+            position:absolute; top:8px; right:8px;
+            padding:3px 7px; border-radius:5px; background:rgba(0,0,0,.55);
+            font-size:9.5px; font-family:'IBM Plex Mono',monospace; color:#fff;
+        }
+        .ov-br {
+            position:absolute; bottom:8px; right:8px;
+            padding:2px 6px; border-radius:4px; background:rgba(0,0,0,.55);
+            font-size:9px; font-family:'IBM Plex Mono',monospace; color:#cfd6df;
+        }
+        .ov-text { font-size:9.5px; letter-spacing:.08em; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace; }
+        .scanline {
+            position:absolute; left:0; right:0; height:36px;
+            background:linear-gradient(var(--accent),transparent);
+            opacity:.16; pointer-events:none; animation:erkscanline 3.4s linear infinite;
+        }
+        .ph-icon {
+            position:absolute; top:50%; left:50%;
+            transform:translate(-50%,-50%); opacity:.28; pointer-events:none; color:var(--faint);
+        }
+        .play-hint {
+            position:absolute; inset:0;
+            display:flex; align-items:center; justify-content:center;
+            opacity:0; transition:opacity .15s; pointer-events:none;
+        }
+        .cam-tile:hover .play-hint { opacity:1; }
+        .play-btn {
+            display:flex; align-items:center; justify-content:center;
+            width:34px; height:34px; border-radius:50%;
+            background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.4);
+        }
+        .no-signal {
+            position:absolute; inset:0;
+            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+        }
+        .no-signal-text {
+            font-size:10.5px; letter-spacing:.12em; font-weight:700;
+            color:var(--red); font-family:'IBM Plex Mono',monospace;
+        }
+        .cam-footer {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:9px 11px;
+        }
+        .cam-name-group { display:flex; flex-direction:column; gap:1px; min-width:0; }
+        .cam-name { font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .cam-id   { font-size:9.5px; color:var(--faint); font-family:'IBM Plex Mono',monospace; }
+        .cam-fps  { font-size:9.5px; font-family:'IBM Plex Mono',monospace; color:var(--faint); white-space:nowrap; }
+        .cam-empty { padding:40px; text-align:center; color:var(--faint); font-size:12px; }
+
+        /* ── Modal ───────────────────────────────────────────────────────── */
+        .modal-scrim {
+            display:none; position:fixed; inset:0; z-index:100;
+            background:rgba(0,0,0,.72);
+            align-items:center; justify-content:center; padding:40px;
+        }
+        .modal-scrim.open { display:flex; }
+        .modal-card {
+            width:920px; max-width:100%;
+            background:var(--panel); border-radius:11px; overflow:hidden;
+            box-shadow:0 20px 60px rgba(0,0,0,.5); border:1px solid var(--border);
+        }
+        .modal-card.down-border { border-color:var(--red); }
+        .modal-head {
+            display:flex; align-items:center; gap:10px;
+            padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap;
+        }
+        .modal-name { font-size:13px; font-weight:600; }
+        .modal-id   { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--faint); }
+        .modal-kind {
+            font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:600;
+            color:var(--muted); padding:2px 8px; border:1px solid var(--border); border-radius:999px;
+        }
+        .modal-meta   { margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--faint); }
+        .modal-close  {
+            width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+            background:transparent; border:1px solid var(--border); border-radius:7px;
+            cursor:pointer; color:var(--muted); font-size:16px;
+        }
+        .modal-media  { position:relative; aspect-ratio:16/9; overflow:hidden; }
+        .modal-video  { width:100%; height:100%; object-fit:cover; display:block; background:#000; }
+        .modal-down-state {
+            position:absolute; inset:0;
+            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+        }
+        .modal-down-text { font-size:14px; letter-spacing:.14em; font-weight:700; color:var(--red); font-family:'IBM Plex Mono',monospace; }
+        .modal-down-sub  { font-size:11px; color:var(--faint); }
+
+        /* ── Footer caption ──────────────────────────────────────────────── */
+        .page-caption { text-align:center; font-size:10.5px; color:var(--faint); margin:4px 0 0; }
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media (max-width:1100px) { .cam-grid { grid-template-columns:repeat(3,1fr); } }
+        @media (max-width:700px)  {
+            .cam-grid { grid-template-columns:repeat(2,1fr); gap:8px; }
+            .modal-scrim { padding:12px; }
+            .erkos-name, .erkos-sub { display:none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Topbar ─────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+    <div class="topbar-left">
+        <a class="erkos-logo" href="/dashboard">
+            <div class="erkos-icon"><img src="/images/erkos.png" alt="ERKOS"></div>
+            <div class="erkos-wordmark">
+                <span class="erkos-name">ERKOS</span>
+                <span class="erkos-sub">SECURITY&nbsp;OPS</span>
+            </div>
+        </a>
+        <a class="back-btn" href="/dashboard">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M7.5 2L3.5 6l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Dashboard
+        </a>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="theme-btn" id="themeToggle" title="Toggle theme">☀</button>
+    <div class="user-area">
+        <div class="user-avatar" id="userAvatar">--</div>
+        <button class="logout-btn" onclick="window.location.href='/auth/logout'">
+            <span style="display:block;width:13px;height:13px;border:1.5px solid currentColor;border-radius:3px;border-right-color:transparent"></span>
+            LOGOUT
+        </button>
+    </div>
+</div>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<div class="main">
+
+    <!-- Header -->
+    <div class="cam-header">
+        <div class="cam-title">
+            <h1>Camera Feeds</h1>
+            <p id="camSubtitle">Loading locations…</p>
+        </div>
+        <div style="flex:1"></div>
+        <div class="location-pill">
+            <span class="location-label">Location</span>
+            <select class="location-select" id="camLocationSelect">
+                <option value="">Loading…</option>
+            </select>
+        </div>
+        <div class="status-pill ok" id="camStatusPill">
+            <span class="status-dot live"></span>
+            All feeds nominal
+        </div>
+    </div>
+
+    <!-- Down alert (hidden by default) -->
+    <div class="cam-alert" id="camAlert" style="display:none">
+        <div class="cam-alert-icon">!</div>
+        <div class="cam-alert-body">
+            <div class="cam-alert-title" id="camAlertTitle"></div>
+            <div class="cam-alert-chips" id="camAlertChips"></div>
+        </div>
+    </div>
+
+    <!-- Internal section -->
+    <div class="cam-section" id="sectionInternal" style="display:none">
+        <div class="cam-section-head">
+            <span class="cam-section-label" id="labelInternal">Internal · 0</span>
+            <div class="cam-section-rule"></div>
+        </div>
+        <div class="cam-grid" id="gridInternal"></div>
+    </div>
+
+    <!-- External section -->
+    <div class="cam-section" id="sectionExternal" style="display:none">
+        <div class="cam-section-head">
+            <span class="cam-section-label" id="labelExternal">External · 0</span>
+            <div class="cam-section-rule"></div>
+        </div>
+        <div class="cam-grid" id="gridExternal"></div>
+    </div>
+
+    <div class="cam-empty" id="camEmpty" style="display:none">No cameras found for this location.</div>
+
+    <p class="page-caption">ERKOS Security Dashboard &copy; 2026 &middot; All detections AI-verified</p>
+</div>
+
+<!-- ── Camera modal ────────────────────────────────────────────────────────── -->
+<div class="modal-scrim" id="camModal" onclick="closeCamModal()">
+    <div class="modal-card" id="modalCard" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <span class="status-dot" id="modalDot"></span>
+            <span class="modal-name" id="modalName"></span>
+            <span class="modal-id"   id="modalId"></span>
+            <span class="modal-kind" id="modalKind"></span>
+            <span class="modal-meta" id="modalMeta"></span>
+            <button class="modal-close" onclick="closeCamModal()">&times;</button>
+        </div>
+        <div class="modal-media">
+            <!-- bg layer (placeholder stripes + overlays) -->
+            <div id="modalBg" class="modal-video bg-live" style="position:relative">
+                <div class="ov-tl">
+                    <span class="status-dot" id="modalStatusDot"></span>
+                    <span class="ov-text"    id="modalStatusText"></span>
+                </div>
+                <div class="ov-br" id="modalClock"></div>
+                <div class="scanline" id="modalScanline" style="height:70px"></div>
+                <div class="ph-icon" id="modalIcon" style="opacity:.25"></div>
+                <div class="modal-down-state" id="modalDownState" style="display:none">
+                    <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+                        <circle cx="21" cy="21" r="19" stroke="#f0556a" stroke-width="1.5"/>
+                        <line x1="10" y1="10" x2="32" y2="32" stroke="#f0556a" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M14 21 Q21 12 28 21" stroke="#f0556a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                        <path d="M10 21 Q21 8 32 21" stroke="#f0556a" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".5"/>
+                    </svg>
+                    <div class="modal-down-text">NO SIGNAL</div>
+                    <div class="modal-down-sub">Awaiting reconnect from device</div>
+                </div>
+            </div>
+            <!-- actual video (shown when HLS loads) -->
+            <video id="modalVideo" class="modal-video" style="display:none;position:absolute;inset:0" autoplay muted playsinline></video>
+        </div>
+    </div>
+</div>
+
+<script>
+    const clientName = '<%= clientName || "User" %>';
+
+    // ── Theme ──────────────────────────────────────────────────────────────
+    const html  = document.documentElement;
+    const saved = localStorage.getItem('erkos-theme') || 'dark';
+    html.setAttribute('data-theme', saved);
+    const themeBtn = document.getElementById('themeToggle');
+    themeBtn.textContent = saved === 'dark' ? '☀' : '☾';
+    themeBtn.addEventListener('click', () => {
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('erkos-theme', next);
+        themeBtn.textContent = next === 'dark' ? '☀' : '☾';
+    });
+
+    // ── Avatar initials ────────────────────────────────────────────────────
+    document.getElementById('userAvatar').textContent =
+        clientName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || '--';
+
+    // ── State ──────────────────────────────────────────────────────────────
+    let camLocations  = [];
+    let downList      = [];   // [{loc, id}]
+    let hlsInstance   = null;
+    let clockInterval = null;
+    let modalClockInterval = null;
+
+    function isDown(locId, camId) {
+        return downList.some(d => d.loc === locId && d.id === camId);
+    }
+
+    function clockStr() {
+        const n = new Date();
+        return [n.getHours(), n.getMinutes(), n.getSeconds()]
+            .map(v => String(v).padStart(2,'0')).join(':');
+    }
+
+    // ── SVG icons ──────────────────────────────────────────────────────────
+    const ICON_INT = `<svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M5 24c0-5 4-8 9-8s9 3 9 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>`;
+    const ICON_EXT = `<svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="4" y="8" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M20 12l5-3v10l-5-3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <circle cx="12" cy="14" r="3" stroke="currentColor" stroke-width="1.2"/>
+    </svg>`;
+    const NO_SIGNAL = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#f0556a" stroke-width="1.2"/>
+        <line x1="5" y1="5" x2="19" y2="19" stroke="#f0556a" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M8 12 Q12 7 16 12" stroke="#f0556a" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <path d="M5 12 Q12 5 19 12" stroke="#f0556a" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".5"/>
+    </svg>`;
+    const PLAY_SVG = `<svg width="12" height="14" viewBox="0 0 12 14" fill="white"><path d="M1 1l10 6-10 6V1z"/></svg>`;
+
+    function buildTile(cam, locId, kind, idx) {
+        const down  = isDown(locId, cam.id);
+        const delay = idx * 0.6;
+        const icon  = kind === 'internal' ? ICON_INT : ICON_EXT;
+
+        return `<div class="cam-tile${down ? ' cam-tile-down' : ''}"
+                     data-loc="${locId}" data-id="${cam.id}" data-kind="${kind}">
+            <div class="cam-media ${down ? 'bg-down' : 'bg-live'}">
+                <div class="ov-tl">
+                    <span class="status-dot ${down ? 'down' : 'live'}"></span>
+                    <span class="ov-text">${down ? 'CAMERA DOWN' : 'LIVE'}</span>
+                </div>
+                <div class="ov-tr">${down ? '—' : '1080p'}</div>
+                <div class="ov-br tile-clock">${clockStr()}</div>
+                ${down
+                    ? `<div class="no-signal">${NO_SIGNAL}<span class="no-signal-text">NO SIGNAL</span></div>`
+                    : `<div class="scanline" style="animation-delay:${delay}s"></div>
+                       <div class="ph-icon">${icon}</div>
+                       <div class="play-hint"><div class="play-btn">${PLAY_SVG}</div></div>`
+                }
+            </div>
+            <div class="cam-footer">
+                <div class="cam-name-group">
+                    <span class="cam-name">${cam.name}</span>
+                    <span class="cam-id">${cam.id}</span>
+                </div>
+                <span class="cam-fps">${down ? '—' : '30fps'}</span>
+            </div>
+        </div>`;
+    }
+
+    function renderGrid(locId) {
+        const loc = camLocations.find(l => l.location_id === locId);
+        if (!loc) return;
+
+        const intCams = loc.internal || [];
+        const extCams = loc.external || [];
+        const total   = intCams.length + extCams.length;
+        const live    = [...intCams, ...extCams].filter(c => !isDown(locId, c.id)).length;
+
+        document.getElementById('camSubtitle').textContent =
+            `${loc.name} · ${total} camera${total === 1 ? '' : 's'} · ${live} live`;
+
+        document.getElementById('gridInternal').innerHTML = intCams.map((c,i) => buildTile(c, locId, 'internal', i)).join('');
+        document.getElementById('gridExternal').innerHTML = extCams.map((c,i) => buildTile(c, locId, 'external', i)).join('');
+
+        document.getElementById('sectionInternal').style.display = intCams.length ? '' : 'none';
+        document.getElementById('sectionExternal').style.display = extCams.length ? '' : 'none';
+        document.getElementById('labelInternal').textContent = `Internal · ${intCams.length}`;
+        document.getElementById('labelExternal').textContent = `External · ${extCams.length}`;
+        document.getElementById('camEmpty').style.display = total === 0 ? '' : 'none';
+
+        // tile click handlers
+        document.querySelectorAll('.cam-tile').forEach(tile => {
+            tile.addEventListener('click', () => {
+                const l  = tile.dataset.loc;
+                const id = tile.dataset.id;
+                const k  = tile.dataset.kind;
+                const lo = camLocations.find(x => x.location_id === l);
+                const cams = k === 'internal' ? lo.internal : lo.external;
+                const cam = cams.find(c => c.id === id);
+                if (cam) openModal(cam, l, k);
+            });
+        });
+
+        // start per-tile clock ticks
+        if (clockInterval) clearInterval(clockInterval);
+        clockInterval = setInterval(() => {
+            document.querySelectorAll('.tile-clock').forEach(el => el.textContent = clockStr());
+        }, 1000);
+    }
+
+    function updateAlert() {
+        const alertEl  = document.getElementById('camAlert');
+        const pillEl   = document.getElementById('camStatusPill');
+
+        if (downList.length === 0) {
+            alertEl.style.display = 'none';
+            pillEl.className = 'status-pill ok';
+            pillEl.innerHTML = '<span class="status-dot live"></span>All feeds nominal';
+            return;
+        }
+
+        alertEl.style.display = 'flex';
+        document.getElementById('camAlertTitle').textContent =
+            `${downList.length} camera(s) reporting no signal`;
+        pillEl.className = 'status-pill alert';
+        pillEl.innerHTML = `<span class="status-dot down"></span>${downList.length} camera(s) down`;
+
+        document.getElementById('camAlertChips').innerHTML = downList.map(d => {
+            const lo = camLocations.find(l => l.location_id === d.loc);
+            return `<span class="cam-alert-chip">${lo ? lo.name : d.loc} — ${d.id}</span>`;
+        }).join('');
+    }
+
+    async function loadCameras() {
+        try {
+            const res  = await fetch('/cameras/api/cameras');
+            camLocations = await res.json();
+        } catch (e) {
+            console.error('Camera load error:', e);
+            camLocations = [];
+        }
+
+        const select = document.getElementById('camLocationSelect');
+        select.innerHTML = '';
+
+        if (!camLocations.length) {
+            select.innerHTML = '<option value="">No locations found</option>';
+            document.getElementById('camEmpty').style.display = '';
+            document.getElementById('camSubtitle').textContent = 'No locations configured';
+            return;
+        }
+
+        camLocations.forEach(loc => {
+            const opt = document.createElement('option');
+            opt.value = loc.location_id;
+            opt.textContent = loc.name || loc.location_id;
+            select.appendChild(opt);
+        });
+
+        select.addEventListener('change', () => renderGrid(select.value));
+
+        // check all streams in parallel to determine down list
+        checkAllStreams();
+
+        renderGrid(camLocations[0].location_id);
+    }
+
+    async function checkAllStreams() {
+        const checks = [];
+        camLocations.forEach(loc => {
+            [...(loc.internal || []), ...(loc.external || [])].forEach(cam => {
+                checks.push(
+                    fetch(`/cameras/api/stream/${encodeURIComponent(cam.id)}`)
+                        .then(r => r.json())
+                        .then(json => { if (json.down) downList.push({ loc: loc.location_id, id: cam.id }); })
+                        .catch(() => downList.push({ loc: loc.location_id, id: cam.id }))
+                );
+            });
+        });
+
+        await Promise.all(checks);
+        updateAlert();
+        const cur = document.getElementById('camLocationSelect').value;
+        if (cur) renderGrid(cur);
+    }
+
+    // ── Modal ──────────────────────────────────────────────────────────────
+    function openModal(cam, locId, kind) {
+        const down = isDown(locId, cam.id);
+
+        document.getElementById('modalName').textContent = cam.name;
+        document.getElementById('modalId').textContent   = cam.id;
+        document.getElementById('modalKind').textContent = kind;
+        document.getElementById('modalMeta').textContent = down ? '— · —' : '1080p · 30fps';
+
+        document.getElementById('modalDot').className       = `status-dot ${down ? 'down' : 'live'}`;
+        document.getElementById('modalCard').className      = `modal-card${down ? ' down-border' : ''}`;
+        document.getElementById('modalBg').className        = `modal-video ${down ? 'bg-down' : 'bg-live'}`;
+        document.getElementById('modalStatusDot').className = `status-dot ${down ? 'down' : 'live'}`;
+        document.getElementById('modalStatusText').textContent = down ? 'CAMERA DOWN' : 'LIVE';
+        document.getElementById('modalScanline').style.display  = down ? 'none' : '';
+        document.getElementById('modalIcon').style.display      = down ? 'none' : '';
+        document.getElementById('modalIcon').innerHTML          = kind === 'internal' ? ICON_INT : ICON_EXT;
+        document.getElementById('modalDownState').style.display = down ? 'flex' : 'none';
+
+        document.getElementById('modalClock').textContent = clockStr();
+        if (modalClockInterval) clearInterval(modalClockInterval);
+        modalClockInterval = setInterval(() => {
+            document.getElementById('modalClock').textContent = clockStr();
+        }, 1000);
+
+        document.getElementById('camModal').classList.add('open');
+
+        if (!down) loadStream(cam.id);
+    }
+
+    function closeCamModal() {
+        document.getElementById('camModal').classList.remove('open');
+        if (modalClockInterval) { clearInterval(modalClockInterval); modalClockInterval = null; }
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        const vid = document.getElementById('modalVideo');
+        vid.style.display = 'none';
+        vid.src = '';
+    }
+
+    async function loadStream(streamName) {
+        try {
+            const res  = await fetch(`/cameras/api/stream/${encodeURIComponent(streamName)}`);
+            const json = await res.json();
+            if (json.down || !json.url) return;
+
+            const vid = document.getElementById('modalVideo');
+            vid.style.display = 'block';
+
+            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                if (hlsInstance) hlsInstance.destroy();
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(json.url);
+                hlsInstance.attachMedia(vid);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => vid.play().catch(() => {}));
+            } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+                vid.src = json.url;
+                vid.play().catch(() => {});
+            }
+        } catch (e) {
+            console.error('Stream error:', e);
+        }
+    }
+
+    // ── Boot ───────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', loadCameras);
+</script>
+</body>
+</html>

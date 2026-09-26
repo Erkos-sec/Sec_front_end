@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERKOS Security - Dashboard</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-button" onclick="toggleSidebar()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <span class="menu-text">MENU</span>
+        </div>
+
+        <div class="header-center">
+            <div class="logo">
+                <img src="/images/erkos.png" alt="ERKOS Logo" width="40" height="40">
+            </div>
+            <div class="brand-info">
+                <h1 class="brand-name">ERKOS</h1>
+                <p class="brand-subtitle">SECURITY</p>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="time-filter">
+                <select id="timeFilter" onchange="updateTimeFilter()">
+                    <option value="24">Last 24 Hours</option>
+                    <option value="168" selected>Last 7 Days</option>
+                    <option value="720">Last 30 Days</option>
+                    <option value="8760">Last Year</option>
+                </select>
+            </div>
+            <button class="logout-button" onclick="logout()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16,17 21,12 16,7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
+            <span class="logout-text">LOGOUT</span>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="dashboard-grid">
+            <div class="metric-card parking-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <path d="M9 3v18"></path>
+                        </svg>
+                        <h3>Parking Utilization</h3>
+                    </div>
+                    <div class="card-badge">Live</div>
+                </div>
+                <div class="card-content">
+                    <div class="chart-section">
+                        <div class="chart-wrapper">
+                            <canvas id="parkingChart"></canvas>
+                            <div class="chart-center-text">
+                                <span class="center-value" id="parkingPercentage"><%= stats.parkingUtilization.percentage || 0 %>%</span>
+                                <span class="center-label">Occupied</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stats-section">
+                        <div class="stat-item">
+                            <div class="stat-icon occupied">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H8.5a1 1 0 0 0-.8.4L5 11l-5.16 1.86a1 1 0 0 0-.84.99V16h3"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Occupied Spots</span>
+                                <span class="stat-value" id="occupiedSpots"><%= stats.parkingUtilization.used || 0 %></span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon available">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="m9 12 2 2 4-4"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Available Spots</span>
+                                <span class="stat-value" id="availableSpots"><%= stats.parkingUtilization.available || 0 %></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card stay-time-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <h3>Average Stay Time</h3>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="stay-metrics">
+                        <div class="stay-metric-item primary">
+                            <div class="stay-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H8.5a1 1 0 0 0-.8.4L5 11l-5.16 1.86a1 1 0 0 0-.84.99V16h3m0 0a2 2 0 1 0 4 0m10 0a2 2 0 1 0 4 0"></path>
+                                </svg>
+                            </div>
+                            <div class="stay-details">
+                                <span class="stay-label">Vehicles</span>
+                                <div class="stay-value-wrapper">
+                                    <span class="stay-value" id="carsStayTime"><%= stats.averageStayTime.cars.toFixed(1) || 0 %></span>
+                                    <span class="stay-unit">minutes</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="carsProgress" style="width: <%= Math.min(stats.averageStayTime.cars * 2, 100) %>%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stay-metric-item secondary">
+                            <div class="stay-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="stay-details">
+                                <span class="stay-label">Foot Traffic</span>
+                                <div class="stay-value-wrapper">
+                                    <span class="stay-value" id="peopleCount"><%= stats.footTraffic || 0 %></span>
+                                    <span class="stay-unit">people</span>
+                                </div>
+                                <div class="trend-badge positive">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="18 15 12 9 6 15"></polyline>
+                                    </svg>
+                                    <span>Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card traffic-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <h3>Foot Traffic Analytics</h3>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="traffic-visual">
+                        <div class="traffic-chart">
+                            <canvas id="trafficChart"></canvas>
+                        </div>
+                        <div class="traffic-stats">
+                            <div class="traffic-stat">
+                                <span class="traffic-number" id="footTrafficCount"><%= stats.footTraffic || 0 %></span>
+                                <span class="traffic-label">Total Visitors</span>
+                            </div>
+                            <div class="traffic-indicators">
+                                <div class="indicator">
+                                    <span class="indicator-dot peak"></span>
+                                    <span class="indicator-text">Peak Hours</span>
+                                </div>
+                                <div class="indicator">
+                                    <span class="indicator-dot normal"></span>
+                                    <span class="indicator-text">Normal Flow</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card infringement-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <h3>Infringement Rate</h3>
+                    </div>
+                    <div class="card-badge alert">Alert</div>
+                </div>
+                <div class="card-content">
+                    <div class="infringement-visual">
+                        <div class="chart-wrapper">
+                            <canvas id="infringementChart"></canvas>
+                            <div class="chart-center-text">
+                                <span class="center-value warning" id="infringementPercentage"><%= stats.infringements.rate || 0 %>%</span>
+                                <span class="center-label">Rate</span>
+                            </div>
+                        </div>
+                        <div class="infringement-stats">
+                            <div class="infringement-item">
+                                <div class="infringement-number" id="infringementCount"><%= stats.infringements.count || 0 %></div>
+                                <div class="infringement-label">Active Violations</div>
+                            </div>
+                            <div class="infringement-legend">
+                                <div class="legend-row">
+                                    <span class="legend-dot compliant"></span>
+                                    <span class="legend-text">Compliant: <strong id="compliantPercent"><%= 100 - (stats.infringements.rate || 0) %>%</strong></span>
+                                </div>
+                                <div class="legend-row">
+                                    <span class="legend-dot violation"></span>
+                                    <span class="legend-text">Violations: <strong id="violationPercent"><%= stats.infringements.rate || 0 %>%</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="table-section">
+        <div class="table-header">
+            <div class="table-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <h2>Recent Infractions</h2>
+            </div>
+            <div class="table-controls">
+                <button id="refreshTable" class="refresh-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="m3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="infractionsTable" class="infractions-table">
+                <thead>
+                    <tr>
+                        <th>Car ID</th>
+                        <th>License Plate</th>
+                        <th>Property</th>
+                        <th>Duration (Min)</th>
+                        <th>Parking Spot</th>
+                        <th>Minutes Parked</th>
+                        <th>Infraction Type</th>
+                        <th>Detection Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="infractionsTableBody">
+                </tbody>
+            </table>
+            <div id="noInfractions" class="no-data" style="display: none;">
+                <div class="no-data-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </div>
+                <h3>No Active Infractions</h3>
+                <p>All violations have been resolved or no infractions detected in the selected time period.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 • ERKOS SECURITY • Powered by Advanced Analytics</p>
+    </footer>
+
+    <script>
+        let parkingChart, infringementChart, trafficChart;
+
+        const dashboardData = {
+            parkingUtilization: {
+                used: <%= stats.parkingUtilization.used || 0 %>,
+                available: <%= stats.parkingUtilization.available || 0 %>,
+                percentage: <%= stats.parkingUtilization.percentage || 0 %>
+            },
+            averageStayTime: {
+                cars: <%= stats.averageStayTime.cars || 0 %>,
+                people: <%= stats.averageStayTime.people || 0 %>
+            },
+            footTraffic: <%= stats.footTraffic || 0 %>,
+            infringements: {
+                count: <%= stats.infringements.count || 0 %>,
+                rate: <%= stats.infringements.rate || 0 %>
+            },
+            totalSpots: <%= stats.totalSpots || 0 %>
+        };
+
+        function initParkingChart() {
+            const ctx = document.getElementById('parkingChart').getContext('2d');
+            parkingChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Available', 'Occupied'],
+                    datasets: [{
+                        data: [dashboardData.parkingUtilization.available, dashboardData.parkingUtilization.used],
+                        backgroundColor: ['#E2E8F0', '#4F46E5'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} spots (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initInfringementChart() {
+            const ctx = document.getElementById('infringementChart').getContext('2d');
+            infringementChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Compliant', 'Violations'],
+                    datasets: [{
+                        data: [100 - dashboardData.infringements.rate, dashboardData.infringements.rate],
+                        backgroundColor: ['#10B981', '#EF4444'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.parsed}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initTrafficChart() {
+            const ctx = document.getElementById('trafficChart').getContext('2d');
+            const hours = Array.from({length: 12}, (_, i) => i * 2);
+            const trafficData = hours.map(() => Math.floor(Math.random() * dashboardData.footTraffic / 5) + 10);
+            
+            trafficChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours.map(h => `${h}:00`),
+                    datasets: [{
+                        label: 'Foot Traffic',
+                        data: trafficData,
+                        borderColor: '#8B5CF6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#8B5CF6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#F3F4F6'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function updateDashboard(hours = 168) {
+            try {
+                const response = await fetch(`/dashboard/api/stats?hours=${hours}`);
+                const data = await response.json();
+                
+                if (parkingChart) {
+                    parkingChart.data.datasets[0].data = [data.parkingUtilization.available, data.parkingUtilization.used];
+                    parkingChart.update();
+                }
+                
+                if (infringementChart) {
+                    infringementChart.data.datasets[0].data = [100 - data.infringements.rate, data.infringements.rate];
+                    infringementChart.update();
+                }
+                
+                const updateElement = (id, value) => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = value;
+                };
+
+                updateElement('parkingPercentage', `${data.parkingUtilization.percentage || 0}%`);
+                updateElement('occupiedSpots', data.parkingUtilization.used || 0);
+                updateElement('availableSpots', data.parkingUtilization.available || 0);
+                updateElement('totalSpots', data.totalSpots || 0);
+                updateElement('carsStayTime', data.averageStayTime.cars.toFixed(1) || 0);
+                updateElement('peopleCount', data.footTraffic || 0);
+                updateElement('footTrafficCount', data.footTraffic || 0);
+                updateElement('infringementCount', data.infringements.count || 0);
+                updateElement('infringementPercentage', `${data.infringements.rate || 0}%`);
+                updateElement('compliantPercent', `${100 - (data.infringements.rate || 0)}%`);
+                updateElement('violationPercent', `${data.infringements.rate || 0}%`);
+                
+                const carsProgress = document.getElementById('carsProgress');
+                if (carsProgress) {
+                    carsProgress.style.width = `${Math.min(data.averageStayTime.cars * 2, 100)}%`;
+                }
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+
+        function updateTimeFilter() {
+            const hours = document.getElementById('timeFilter').value;
+            updateDashboard(hours);
+            loadInfractionTable();
+        }
+
+        function logout() {
+            window.location.href = '/auth/logout';
+        }
+
+        function toggleSidebar() {
+            console.log('Sidebar toggle clicked');
+        }
+
+        async function loadInfractionTable() {
+            try {
+                const hours = document.getElementById('timeFilter').value;
+                const response = await fetch(`/dashboard/api/infractions?hours=${hours}`);
+                const infractions = await response.json();
+                
+                const tableBody = document.getElementById('infractionsTableBody');
+                const noDataDiv = document.getElementById('noInfractions');
+                const table = document.getElementById('infractionsTable');
+                
+                if (infractions.length === 0) {
+                    table.style.display = 'none';
+                    noDataDiv.style.display = 'block';
+                } else {
+                    table.style.display = 'table';
+                    noDataDiv.style.display = 'none';
+                    
+                    tableBody.innerHTML = infractions.map(infraction => {
+                        const isApproved = infraction.approved === 1;
+                        const rowClass = isApproved ? 'approved-row' : '';
+                        const buttonHtml = isApproved 
+                            ? `<span class="approved-badge">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m9 12 2 2 4-4"></path>
+                                </svg>
+                                Approved
+                               </span>`
+                            : `<button class="approve-btn" onclick="approveInfraction('${infraction.car_id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m9 12 2 2 4-4"></path>
+                                </svg>
+                                Approve
+                               </button>`;
+                        
+                        return `
+                        <tr class="${rowClass}">
+                            <td><span class="badge">${infraction.car_id || 'N/A'}</span></td>
+                            <td><strong>${infraction.license_plate || 'N/A'}</strong></td>
+                            <td>${infraction.property_name || 'N/A'}</td>
+                            <td>${infraction.dur_in_minutes || 0}</td>
+                            <td>${infraction.parking_spot || 'N/A'}</td>
+                            <td>${infraction.minutes_parked || 0}</td>
+                            <td><span class="infraction-badge">${infraction.infraction_type || 'N/A'}</span></td>
+                            <td>${new Date(infraction.detection_time).toLocaleString() || 'N/A'}</td>
+                            <td>${buttonHtml}</td>
+                        </tr>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading infraction table:', error);
+            }
+        }
+
+        async function approveInfraction(carId) {
+            try {
+                const response = await fetch('/dashboard/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ car_id: carId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    loadInfractionTable();
+                    updateDashboard(document.getElementById('timeFilter').value);
+                } else {
+                    alert('Failed to approve infraction: ' + (result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error approving infraction:', error);
+                alert('Error approving infraction');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initParkingChart();
+            initInfringementChart();
+            initTrafficChart();
+            loadInfractionTable();
+            
+            document.getElementById('refreshTable').addEventListener('click', () => {
+                loadInfractionTable();
+                updateDashboard(document.getElementById('timeFilter').value);
+            });
+            
+            setInterval(() => {
+                const currentHours = document.getElementById('timeFilter').value;
+                updateDashboard(currentHours);
+                loadInfractionTable();
+            }, 30000);
+        });
+    </script>
+</body>
+</html>
